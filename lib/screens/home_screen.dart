@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/imovel.dart';
 import '../services/imovel_service.dart';
+import '../widgets/imovel_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,117 +12,172 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ImovelService _service = ImovelServiceMock();
-  String cidadeSelecionada = 'São Paulo'; // Valor inicial guardado/padrão
+  final ScrollController _scrollController = ScrollController();
+
+  String cidadeAtual = 'São Paulo';
+  String termoBusca = '';
+  TipoOrdenacao ordenacaoSelecionada = TipoOrdenacao.maisRecentes;
+
+  List<Imovel> listaImoveis = [];
+  bool carregando = false;
+  int paginaAtual = 1;
 
   @override
   void initState() {
     super.initState();
-    _verificarPermissaoEObterCidade();
+    _carregarImoveis();
+    _scrollController.addListener(_aoRolarATela);
   }
 
-  void _verificarPermissaoEObterCidade() async {
-    // Simulação do diálogo de permissão de localização
-    // Em produção, usaremos a biblioteca 'geolocator' ou 'permission_handler'
-    Future.microtask(() {
-      _mostrarDialogoPermissao();
+  void _aoRolarATela() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      // Gatilho para carregar próximas páginas ao rolar
+      _carregarMaisImoveis();
+    }
+  }
+
+  Future<void> _carregarImoveis() async {
+    setState(() {
+      carregando = true;
+      paginaAtual = 1;
+    });
+
+    final resultados = await _service.getImoveis(
+      cidade: cidadeAtual,
+      busca: termoBusca,
+      ordenacao: ordenacaoSelecionada,
+      pagina: paginaAtual,
+    );
+
+    setState(() {
+      listaImoveis = resultados;
+      carregando = false;
     });
   }
 
-  void _mostrarDialogoPermissao() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Permissão de Localização'),
-        content: const Text(
-          'Precisamos da sua localização para mostrar automaticamente os imóveis disponíveis na sua cidade atual.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context); // Recusou permissão
-              // Abre a lista de cidades para escolha manual
-              final cidadeEscolhida = await Navigator.pushNamed(context, '/selecionar-cidade');
-              if (cidadeEscolhida != null && cidadeEscolhida is String) {
-                setState(() {
-                  cidadeSelecionada = cidadeEscolhida;
-                });
-              }
-            },
-            child: const Text('Recusar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context); // Aceitou permissão
+  Future<void> _carregarMaisImoveis() async {
+    if (carregando) return;
+    // Lógica para incremental paging
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey.shade100,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.white,
+        title: GestureDetector(
+          onTap: () async {
+            final novaCidade = await Navigator.pushNamed(context, '/selecionar-cidade');
+            if (novaCidade != null && novaCidade is String) {
               setState(() {
-                cidadeSelecionada = 'São Paulo'; // Cidade detectada pelo GPS (mock)
+                cidadeAtual = novaCidade;
               });
-            },
-            child: const Text('Permitir'),
+              _carregarImoveis();
+            }
+          },
+          child: Row(
+            children: [
+              const Icon(Icons.location_on, color: Colors.redAccent, size: 22),
+              const SizedBox(width: 6),
+              Text(
+                cidadeAtual,
+                style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
+            ],
+          ),
+        ),
+      ),
+      body: Column(
+        children: [
+          // Barra de Pesquisa e Ordenação
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Column(
+              children: [
+                TextField(
+                  onChanged: (valor) {
+                    termoBusca = valor;
+                    _carregarImoveis();
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Buscar por título ou bairro...',
+                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: Colors.grey.shade100,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Chips de Ordenação
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _criarChipOrdenacao('Mais Recentes', TipoOrdenacao.maisRecentes),
+                      _criarChipOrdenacao('Menor Preço', TipoOrdenacao.menorPreco),
+                      _criarChipOrdenacao('Maior Preço', TipoOrdenacao.maiorPreco),
+                      _criarChipOrdenacao('Maior Área', TipoOrdenacao.maiorArea),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Lista da Vitrine
+          Expanded(
+            child: carregando
+                ? const Center(child: CircularProgressIndicator())
+                : listaImoveis.isEmpty
+                ? const Center(child: Text('Nenhum imóvel encontrado.'))
+                : ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(16),
+              itemCount: listaImoveis.length,
+              itemBuilder: (context, index) {
+                final imovel = listaImoveis[index];
+                return ImovelCard(
+                  imovel: imovel,
+                  onTap: () {
+                    Navigator.pushNamed(context, '/detalhes-imovel', arguments: imovel);
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: GestureDetector(
-          onTap: () async {
-            // Permitir trocar cidade no topo da tela
-            final novaCidade = await Navigator.pushNamed(context, '/selecionar-cidade');
-            if (novaCidade != null && novaCidade is String) {
-              setState(() {
-                cidadeSelecionada = novaCidade;
-              });
-            }
-          },
-          child: Row(
-            children: [
-              const Icon(Icons.location_on, size: 20),
-              const SizedBox(width: 6),
-              Text(cidadeSelecionada),
-              const Icon(Icons.arrow_drop_down),
-            ],
-          ),
-        ),
-      ),
-      body: FutureBuilder<List<Imovel>>(
-        future: _service.getImoveisPorCidade(cidadeSelecionada),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+  Widget _criarChipOrdenacao(String rotulo, TipoOrdenacao tipo) {
+    final selecionado = ordenacaoSelecionada == tipo;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: ChoiceChip(
+        label: Text(rotulo),
+        selected: selecionado,
+        onSelected: (val) {
+          if (val) {
+            setState(() {
+              ordenacaoSelecionada = tipo;
+            });
+            _carregarImoveis();
           }
-
-          final imoveis = snapshot.data ?? [];
-
-          if (imoveis.isEmpty) {
-            return const Center(child: Text('Nenhum imóvel encontrado para esta cidade.'));
-          }
-
-          return ListView.builder(
-            itemCount: imoveis.length,
-            itemBuilder: (context, index) {
-              final imovel = imoveis[index];
-              return Card(
-                margin: const EdgeInsets.all(8.0),
-                child: ListTile(
-                  title: Text(imovel.titulo),
-                  subtitle: Text('R\$ ${imovel.preco} - ${imovel.quartos} quartos'),
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      '/detalhes-imovel',
-                      arguments: imovel,
-                    );
-                  },
-                ),
-              );
-            },
-          );
         },
+        selectedColor: Theme.of(context).primaryColor,
+        labelStyle: TextStyle(
+          color: selecionado ? Colors.white : Colors.black87,
+          fontSize: 12,
+        ),
       ),
     );
   }
