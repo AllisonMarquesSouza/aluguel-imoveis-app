@@ -1,47 +1,17 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../models/imovel.dart';
+
+enum TipoOrdenacao { menorPreco, maiorPreco, maiorArea, maisRecentes }
 
 abstract class ImovelService {
   Future<List<String>> getCidadesAtendidas();
-  Future<List<Imovel>> getImoveisPorCidade(String cidade);
+  Future<List<Imovel>> getImoveis({
+    required String cidade,
+    String? busca,
+    TipoOrdenacao? ordenacao,
+    int pagina = 1,
+  });
 }
 
-// --------------------------------------------------------------------------
-// IMPLEMENTAÇÃO REAL COM API (Para a tarefa A02)
-// --------------------------------------------------------------------------
-class ImovelServiceApi implements ImovelService {
-  // Altere para a URL real do seu backend quando estiver pronto
-  final String baseUrl = 'https://api.meuappimoveis.com.br/v1';
-
-  @override
-  Future<List<String>> getCidadesAtendidas() async {
-    final response = await http.get(Uri.parse('$baseUrl/cidades'));
-
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((cidade) => cidade.toString()).toList();
-    } else {
-      throw Exception('Falha ao carregar cidades da API');
-    }
-  }
-
-  @override
-  Future<List<Imovel>> getImoveisPorCidade(String cidade) async {
-    final response = await http.get(Uri.parse('$baseUrl/imoveis?cidade=$cidade'));
-
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => Imovel.fromJson(json)).toList();
-    } else {
-      throw Exception('Falha ao carregar imóveis da API');
-    }
-  }
-}
-
-// --------------------------------------------------------------------------
-// IMPLEMENTAÇÃO MOCK (Usada atualmente)
-// --------------------------------------------------------------------------
 class ImovelServiceMock implements ImovelService {
   final List<String> _cidadesMock = [
     'São Paulo',
@@ -50,42 +20,88 @@ class ImovelServiceMock implements ImovelService {
     'Belo Horizonte',
   ];
 
-  final List<Imovel> _imoveisMock = [
+  final List<Imovel> _imoveisBase = [
     Imovel(
       id: '1',
-      titulo: 'Apartamento Centro',
+      titulo: 'Apartamento de Luxo com Varanda',
       cidade: 'São Paulo',
-      preco: 2500.0,
+      bairro: 'Moema',
+      preco: 3500.0,
+      areaM2: 75.0,
       quartos: 2,
-      imagemUrl: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2',
+      imagemUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800',
+      natureza: NaturezaImovel.aluguel,
+      dataCriacao: DateTime.now().subtract(const Duration(days: 2)),
     ),
     Imovel(
       id: '2',
-      titulo: 'Casa com Quintal',
-      cidade: 'Curitiba',
-      preco: 3200.0,
-      quartos: 3,
-      imagemUrl: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914',
+      titulo: 'Casa Moderna em Condomínio',
+      cidade: 'São Paulo',
+      bairro: 'Jardins',
+      preco: 850000.0,
+      areaM2: 210.0,
+      quartos: 4,
+      imagemUrl: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800',
+      natureza: NaturezaImovel.venda,
+      dataCriacao: DateTime.now().subtract(const Duration(days: 10)),
     ),
     Imovel(
       id: '3',
-      titulo: 'Studio Moderno',
+      titulo: 'Studio Totalmente Mobiliado',
       cidade: 'São Paulo',
-      preco: 1800.0,
+      bairro: 'Pinheiros',
+      preco: 2200.0,
+      areaM2: 38.0,
       quartos: 1,
-      imagemUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267',
+      imagemUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
+      natureza: NaturezaImovel.aluguel,
+      dataCriacao: DateTime.now().subtract(const Duration(hours: 5)),
     ),
   ];
 
   @override
   Future<List<String>> getCidadesAtendidas() async {
-    await Future.delayed(const Duration(milliseconds: 400));
+    await Future.delayed(const Duration(milliseconds: 300));
     return _cidadesMock;
   }
 
   @override
-  Future<List<Imovel>> getImoveisPorCidade(String cidade) async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    return _imoveisMock.where((item) => item.cidade == cidade).toList();
+  Future<List<Imovel>> getImoveis({
+    required String cidade,
+    String? busca,
+    TipoOrdenacao? ordenacao,
+    int pagina = 1,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    var resultados = _imoveisBase.where((i) => i.cidade == cidade).toList();
+
+    // Filtro por texto da busca
+    if (busca != null && busca.isNotEmpty) {
+      resultados = resultados.where((i) {
+        final termo = busca.toLowerCase();
+        return i.titulo.toLowerCase().contains(termo) ||
+            i.bairro.toLowerCase().contains(termo);
+      }).toList();
+    }
+
+    // Ordenação
+    switch (ordenacao) {
+      case TipoOrdenacao.menorPreco:
+        resultados.sort((a, b) => a.preco.compareTo(b.preco));
+        break;
+      case TipoOrdenacao.maiorPreco:
+        resultados.sort((a, b) => b.preco.compareTo(a.preco));
+        break;
+      case TipoOrdenacao.maiorArea:
+        resultados.sort((a, b) => b.areaM2.compareTo(a.areaM2));
+        break;
+      case TipoOrdenacao.maisRecentes:
+      default:
+        resultados.sort((a, b) => b.dataCriacao.compareTo(a.dataCriacao));
+        break;
+    }
+
+    return resultados;
   }
 }
