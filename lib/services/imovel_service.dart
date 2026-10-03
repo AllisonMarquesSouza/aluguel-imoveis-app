@@ -1,60 +1,79 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../models/filtros_vitrine.dart';
 import '../models/imovel.dart';
+import '../models/imovel_enums.dart';
 
 enum TipoOrdenacao { menorPreco, maiorPreco, maiorArea, maisRecentes }
 
+class ResultadoBuscaImoveis {
+  final List<Imovel> imoveis;
+  final int total;
+
+  const ResultadoBuscaImoveis({
+    required this.imoveis,
+    required this.total,
+  });
+}
+
 abstract class ImovelService {
   Future<List<String>> getCidadesAtendidas();
-  Future<List<Imovel>> getImoveis({
+
+  Future<ResultadoBuscaImoveis> getImoveis({
     required String cidade,
     String? busca,
     TipoOrdenacao? ordenacao,
+    FiltrosVitrine filtros = const FiltrosVitrine(),
     int pagina = 1,
   });
 }
 
 class ImovelServiceMock implements ImovelService {
   final List<String> _cidadesMock = [
-    'São Paulo',
-    'Rio de Janeiro',
-    'Curitiba',
-    'Belo Horizonte',
+    'Serra Talhada',
+    'Custódia',
+    'Afogados da Ingazeira',
+    'Flores',
   ];
 
   final List<Imovel> _imoveisBase = [
     Imovel(
       id: '1',
       titulo: 'Apartamento de Luxo com Varanda',
-      cidade: 'São Paulo',
-      bairro: 'Moema',
+      cidade: 'Serra Talhada',
+      bairro: 'Centro',
       preco: 3500.0,
       areaM2: 75.0,
       quartos: 2,
       imagemUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800',
-      natureza: NaturezaImovel.aluguel,
+      natureza: NaturezaImovel.apartamento,
+      finalidade: FinalidadeImovel.aluguel,
       dataCriacao: DateTime.now().subtract(const Duration(days: 2)),
     ),
     Imovel(
       id: '2',
       titulo: 'Casa Moderna em Condomínio',
-      cidade: 'São Paulo',
-      bairro: 'Jardins',
+      cidade: 'Custódia',
+      bairro: 'Centro',
       preco: 850000.0,
       areaM2: 210.0,
       quartos: 4,
       imagemUrl: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800',
-      natureza: NaturezaImovel.venda,
+      natureza: NaturezaImovel.casa,
+      finalidade: FinalidadeImovel.venda,
       dataCriacao: DateTime.now().subtract(const Duration(days: 10)),
     ),
     Imovel(
       id: '3',
       titulo: 'Studio Totalmente Mobiliado',
-      cidade: 'São Paulo',
-      bairro: 'Pinheiros',
+      cidade: 'Afogados da Ingazeira',
+      bairro: 'Centro',
       preco: 2200.0,
       areaM2: 38.0,
       quartos: 1,
       imagemUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
-      natureza: NaturezaImovel.aluguel,
+      natureza: NaturezaImovel.apartamento,
+      finalidade: FinalidadeImovel.aluguel,
       dataCriacao: DateTime.now().subtract(const Duration(hours: 5)),
     ),
   ];
@@ -66,11 +85,12 @@ class ImovelServiceMock implements ImovelService {
   }
 
   @override
-  Future<List<Imovel>> getImoveis({
-    required String cidade,
-    String? busca,
-    TipoOrdenacao? ordenacao,
-    int pagina = 1,
+  Future<ResultadoBuscaImoveis> getImoveis({
+  required String cidade,
+  String? busca,
+  TipoOrdenacao? ordenacao,
+  FiltrosVitrine filtros = const FiltrosVitrine(),
+  int pagina = 1,
   }) async {
     await Future.delayed(const Duration(milliseconds: 500));
 
@@ -102,6 +122,74 @@ class ImovelServiceMock implements ImovelService {
         break;
     }
 
-    return resultados;
+      return ResultadoBuscaImoveis(
+      imoveis: resultados,
+      total: resultados.length,
+    );
+  }
+}
+
+class ImovelServiceApi extends ImovelServiceMock {
+  static const String _baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://10.0.2.2:8080',
+  );
+
+  @override
+  Future<ResultadoBuscaImoveis> getImoveis({
+    required String cidade,
+    String? busca,
+    TipoOrdenacao? ordenacao,
+    FiltrosVitrine filtros = const FiltrosVitrine(),
+    int pagina = 1,
+  }) async {
+    final parametros = <String, dynamic>{
+      'cidade': cidade,
+      'pagina': pagina.toString(),
+      if (busca != null && busca.trim().isNotEmpty) 'busca': busca.trim(),
+      if (ordenacao != null) 'ordenacao': ordenacao.name,
+      for (final entrada in filtros.toQueryParameters().entries)
+        entrada.key: entrada.value is List
+            ? (entrada.value as List).map((valor) => valor.toString()).toList()
+            : entrada.value.toString(),
+    };
+
+    final uri = Uri.parse('$_baseUrl/imoveis').replace(
+      queryParameters: parametros,
+    );
+
+    final resposta = await http
+        .get(uri, headers: {'Accept': 'application/json'})
+        .timeout(const Duration(seconds: 15));
+
+    if (resposta.statusCode != 200) {
+      throw Exception(
+        'A API não conseguiu buscar os imóveis '
+        '(HTTP ${resposta.statusCode}).',
+      );
+    }
+
+    final corpo = jsonDecode(utf8.decode(resposta.bodyBytes));
+
+    if (corpo is! Map<String, dynamic> ||
+        corpo['content'] is! List ||
+        corpo['totalElements'] is! num) {
+      throw const FormatException(
+        'A resposta da API não está no formato esperado.',
+      );
+    }
+
+    final imoveis = (corpo['content'] as List)
+        .map(
+          (item) => Imovel.fromJson(
+            Map<String, dynamic>.from(item as Map),
+          ),
+        )
+        .toList();
+
+    return ResultadoBuscaImoveis(
+      imoveis: imoveis,
+      total: (corpo['totalElements'] as num).toInt(),
+    );
   }
 }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../models/filtros_vitrine.dart';
 import '../models/imovel.dart';
 import '../services/imovel_service.dart';
 import '../widgets/imovel_card.dart';
+import 'filtros_vitrine_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,16 +13,19 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final ImovelService _service = ImovelServiceMock();
+  final ImovelService _service = ImovelServiceApi();
   final ScrollController _scrollController = ScrollController();
 
-  String cidadeAtual = 'São Paulo';
+  String cidadeAtual = 'Serra Talhada';
   String termoBusca = '';
   TipoOrdenacao ordenacaoSelecionada = TipoOrdenacao.maisRecentes;
+  FiltrosVitrine filtrosVitrine = const FiltrosVitrine();
 
   List<Imovel> listaImoveis = [];
   bool carregando = false;
   int paginaAtual = 1;
+  int totalResultados = 0;
+  String? erroCarregamento;
 
   @override
   void initState() {
@@ -40,19 +45,55 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       carregando = true;
       paginaAtual = 1;
+      erroCarregamento = null;
     });
 
-    final resultados = await _service.getImoveis(
-      cidade: cidadeAtual,
-      busca: termoBusca,
-      ordenacao: ordenacaoSelecionada,
-      pagina: paginaAtual,
+    try {
+      final resultados = await _service.getImoveis(
+        cidade: cidadeAtual,
+        busca: termoBusca,
+        ordenacao: ordenacaoSelecionada,
+        filtros: filtrosVitrine,
+        pagina: paginaAtual,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        listaImoveis = resultados.imoveis;
+        totalResultados = resultados.total;
+        carregando = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        listaImoveis = [];
+        totalResultados = 0;
+        erroCarregamento = 'Não foi possível carregar os imóveis.';
+        carregando = false;
+      });
+    }
+  }
+  
+
+  Future<void> _abrirFiltros() async {
+    final filtrosSelecionados = await showModalBottomSheet<FiltrosVitrine>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => FiltrosVitrineSheet(
+        filtrosIniciais: filtrosVitrine,
+      ),
     );
 
+    if (filtrosSelecionados == null || !mounted) return;
+
     setState(() {
-      listaImoveis = resultados;
-      carregando = false;
+      filtrosVitrine = filtrosSelecionados;
     });
+
+    _carregarImoveis();
   }
 
   Future<void> _carregarMaisImoveis() async {
@@ -120,6 +161,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: _abrirFiltros,
+                    icon: const Icon(Icons.tune),
+                    label: Text(
+                      filtrosVitrine.estaVazio
+                          ? 'Filtros'
+                          : 'Filtros aplicados',
+                    ),
+                  ),
+                ),
                 // Chips de Ordenação
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -136,13 +189,40 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '$totalResultados '
+                '${totalResultados == 1 ? 'imóvel encontrado' : 'imóveis encontrados'}',
+              ),
+            ),
+          ),
+
           // Lista da Vitrine
           Expanded(
             child: carregando
                 ? const Center(child: CircularProgressIndicator())
-                : listaImoveis.isEmpty
-                ? const Center(child: Text('Nenhum imóvel encontrado.'))
-                : ListView.builder(
+                : erroCarregamento != null
+    ? Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(erroCarregamento!),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: _carregarImoveis,
+              child: const Text('Tentar novamente'),
+            ),
+          ],
+        ),
+      )
+      : listaImoveis.isEmpty
+        ? const Center(
+            child: Text('Nada encontrado. Tente alterar ou limpar os filtros.'),
+          )
+        : ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(16),
               itemCount: listaImoveis.length,

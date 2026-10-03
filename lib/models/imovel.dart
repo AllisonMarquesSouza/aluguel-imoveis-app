@@ -1,4 +1,4 @@
-enum NaturezaImovel { aluguel, venda }
+import 'imovel_enums.dart';
 
 class Imovel {
   final String id;
@@ -10,6 +10,7 @@ class Imovel {
   final int quartos;
   final String imagemUrl;
   final NaturezaImovel natureza;
+  final FinalidadeImovel finalidade;
   final DateTime dataCriacao;
 
   Imovel({
@@ -23,6 +24,7 @@ class Imovel {
     required this.imagemUrl,
     required this.natureza,
     required this.dataCriacao,
+    required this.finalidade,
   });
 
   factory Imovel.fromJson(Map<String, dynamic> json) {
@@ -35,10 +37,15 @@ class Imovel {
       areaM2: (json['areaM2'] as num? ?? 60.0).toDouble(),
       quartos: json['quartos'] as int,
       imagemUrl: json['imagemUrl'] as String,
-      natureza: json['natureza'] == 'venda'
-          ? NaturezaImovel.venda
-          : NaturezaImovel.aluguel,
-      dataCriacao: DateTime.parse(json['dataCriacao'] ?? DateTime.now().toIso8601String()),
+            natureza: NaturezaImovel.values.byName(
+        (json['natureza'] as String).trim().toLowerCase(),
+      ),
+      finalidade: FinalidadeImovel.values.byName(
+        (json['finalidade'] as String).trim().toLowerCase(),
+      ),
+      dataCriacao: DateTime.parse(
+        json['dataCriacao'] ?? DateTime.now().toIso8601String(),
+      ),
     );
   }
 }

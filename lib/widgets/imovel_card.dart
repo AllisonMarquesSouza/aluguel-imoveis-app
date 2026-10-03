@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/imovel.dart';
+import '../models/imovel_enums.dart';
 
 class ImovelCard extends StatelessWidget {
   final Imovel imovel;
@@ -9,7 +10,7 @@ class ImovelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isAluguel = imovel.natureza == NaturezaImovel.aluguel;
+    final isAluguel = imovel.finalidade == FinalidadeImovel.aluguel;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
