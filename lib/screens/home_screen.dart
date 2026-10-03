@@ -69,14 +69,18 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.white,
         title: GestureDetector(
           onTap: () async {
-            final novaCidade = await Navigator.pushNamed(context, '/selecionar-cidade');
-            if (novaCidade != null && novaCidade is String) {
-              setState(() {
-                cidadeAtual = novaCidade;
-              });
-              _carregarImoveis();
-            }
-          },
+              final novaCidade = await Navigator.pushNamed(
+                context,
+                '/selecionar-cidade',
+              );
+
+              if (novaCidade != null && novaCidade is String) {
+                setState(() {
+                  cidadeAtual = novaCidade;
+                });
+                _carregarImoveis();
+              }
+            },
           child: Row(
             children: [
               const Icon(Icons.location_on, color: Colors.redAccent, size: 22),
@@ -147,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 return ImovelCard(
                   imovel: imovel,
                   onTap: () {
-                    Navigator.pushNamed(context, '/detalhes-imovel', arguments: imovel);
+                    Navigator.pushNamed(context, '/detalhes-imovel', arguments: imovel.id,);
                   },
                 );
               },
