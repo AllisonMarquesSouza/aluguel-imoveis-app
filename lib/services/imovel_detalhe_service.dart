@@ -4,6 +4,10 @@ import 'package:http/http.dart' as http;
 
 import '../models/imovel_detalhe.dart';
 
+class ImovelIndisponivelException implements Exception {
+  const ImovelIndisponivelException();
+}
+
 class ImovelDetalheService {
   static const String _baseUrl = String.fromEnvironment(
     'API_BASE_URL',
@@ -20,7 +24,7 @@ class ImovelDetalheService {
         .timeout(const Duration(seconds: 15));
 
     if (resposta.statusCode == 404) {
-      throw Exception('Imóvel não encontrado ou indisponível.');
+      throw const ImovelIndisponivelException();
     }
 
     if (resposta.statusCode != 200) {

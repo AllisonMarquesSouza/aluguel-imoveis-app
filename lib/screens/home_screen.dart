@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 import '../models/filtros_vitrine.dart';
 import '../models/imovel.dart';
 import '../services/imovel_service.dart';
+import '../services/favoritos_service.dart';
 import '../widgets/imovel_card.dart';
 import 'filtros_vitrine_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool temaEscuro;
   final Future<void> Function(bool) onTemaAlterado;
+  final FavoritosService favoritosService;
 
   const HomeScreen({
     super.key,
     required this.temaEscuro,
+    required this.favoritosService,
     required this.onTemaAlterado,
   });
 
@@ -149,18 +152,25 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
           actions: [
-      IconButton(
-        tooltip: widget.temaEscuro
-            ? 'Ativar tema claro'  
-            : 'Ativar tema escuro',
-        icon: Icon(
-          widget.temaEscuro ? Icons.light_mode : Icons.dark_mode,
-        ),
-        onPressed: () {
-          widget.onTemaAlterado(!widget.temaEscuro);
-        },
-      ),
-    ],
+            IconButton(
+              tooltip: 'Meus favoritos',
+              icon: const Icon(Icons.favorite_border),
+              onPressed: () {
+                Navigator.pushNamed(context, '/favoritos');
+              },
+            ),
+            IconButton(
+              tooltip: widget.temaEscuro
+                  ? 'Ativar tema claro'
+                  : 'Ativar tema escuro',
+              icon: Icon(
+                widget.temaEscuro ? Icons.light_mode : Icons.dark_mode,
+              ),
+              onPressed: () {
+                widget.onTemaAlterado(!widget.temaEscuro);
+              },
+            ),
+          ],
       ),
       body: Column(
         children: [
@@ -232,37 +242,59 @@ class _HomeScreenState extends State<HomeScreen> {
             child: carregando
                 ? const Center(child: CircularProgressIndicator())
                 : erroCarregamento != null
-    ? Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(erroCarregamento!),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: _carregarImoveis,
-              child: const Text('Tentar novamente'),
-            ),
-          ],
-        ),
-      )
-      : listaImoveis.isEmpty
-        ? const Center(
-            child: Text('Nada encontrado. Tente alterar ou limpar os filtros.'),
-          )
-        : ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: listaImoveis.length,
-              itemBuilder: (context, index) {
-                final imovel = listaImoveis[index];
-                return ImovelCard(
-                  imovel: imovel,
-                  onTap: () {
-                    Navigator.pushNamed(context, '/detalhes-imovel', arguments: imovel.id,);
-                  },
-                );
-              },
-            ),
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(erroCarregamento!),
+                            const SizedBox(height: 12),
+                            FilledButton(
+                              onPressed: _carregarImoveis,
+                              child: const Text('Tentar novamente'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : listaImoveis.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'Nada encontrado. Tente alterar ou limpar os filtros.',
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.all(16),
+                            itemCount: listaImoveis.length,
+                            itemBuilder: (context, index) {
+                              final imovel = listaImoveis[index];
+
+                              return ValueListenableBuilder<List<Imovel>>(
+                                valueListenable:
+                                    widget.favoritosService.favoritos,
+                                builder: (context, favoritos, _) {
+                                  final isFavorito = favoritos.any(
+                                    (favorito) => favorito.id == imovel.id,
+                                  );
+
+                                  return ImovelCard(
+                                    imovel: imovel,
+                                    isFavorito: isFavorito,
+                                    onAlternarFavorito: () {
+                                      widget.favoritosService
+                                          .alternar(imovel);
+                                    },
+                                    onTap: () {
+                                      Navigator.pushNamed(
+                                        context,
+                                        '/detalhes-imovel',
+                                        arguments: imovel,
+                                      );
+                                    },
+                                  );
+                                },
+                              );
+                            },
+                          ),
           ),
         ],
       ),

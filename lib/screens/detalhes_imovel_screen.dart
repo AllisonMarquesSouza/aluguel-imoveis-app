@@ -1,13 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/imovel_detalhe.dart';
+import '../models/imovel.dart';
 import '../services/imovel_detalhe_service.dart';
+import '../services/favoritos_service.dart';
 
 class DetalhesImovelScreen extends StatefulWidget {
   final String imovelId;
+  final Imovel imovelResumo;
+  final FavoritosService favoritosService;
 
-  const DetalhesImovelScreen({super.key, required this.imovelId});
+  const DetalhesImovelScreen({
+    super.key,
+    required this.imovelId,
+    required this.imovelResumo,
+    required this.favoritosService,
+  });
 
   @override
   State<DetalhesImovelScreen> createState() => _DetalhesImovelScreenState();
@@ -27,6 +38,30 @@ class _DetalhesImovelScreenState extends State<DetalhesImovelScreen> {
     setState(() {
       _imovelFuture = _service.buscarPorId(widget.imovelId);
     });
+  }
+
+  Future<void> _abrirRota(double latitude, double longitude) async {
+    final uri = Uri.https(
+      'www.google.com',
+      '/maps/dir/',
+      {
+        'api': '1',
+        'destination': '$latitude,$longitude',
+      },
+    );
+
+    final abriu = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!abriu && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Não foi possível abrir o aplicativo de mapas.'),
+        ),
+      );
+    }
   }
 
   String _formatarMoeda(double valor) {
@@ -143,7 +178,32 @@ class _DetalhesImovelScreenState extends State<DetalhesImovelScreen> {
         }
 
         return Scaffold(
-          appBar: AppBar(title: Text(imovel.titulo)),
+          appBar: AppBar(
+            title: Text(imovel.titulo),
+            actions: [
+              ValueListenableBuilder<List<Imovel>>(
+                valueListenable: widget.favoritosService.favoritos,
+                builder: (context, favoritos, _) {
+                  final isFavorito = favoritos.any(
+                    (favorito) => favorito.id == widget.imovelResumo.id,
+                  );
+
+                  return IconButton(
+                    tooltip: isFavorito
+                        ? 'Remover dos favoritos'
+                        : 'Adicionar aos favoritos',
+                    onPressed: () {
+                      widget.favoritosService.alternar(widget.imovelResumo);
+                    },
+                    icon: Icon(
+                      isFavorito ? Icons.favorite : Icons.favorite_border,
+                      color: isFavorito ? Colors.red : null,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
           body: ListView(
             children: [
               GaleriaImovel(fotos: imovel.fotos),
@@ -163,6 +223,75 @@ class _DetalhesImovelScreenState extends State<DetalhesImovelScreen> {
                       '${imovel.localizacao.uf}',
                     ),
                     const SizedBox(height: 16),
+                    if (imovel.localizacao.latitude == null ||
+                        imovel.localizacao.longitude == null)
+                      const Text(
+                        'A localização no mapa não está disponível para este imóvel.',
+                      )
+                    else
+                      SizedBox(
+                        height: 240,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: FlutterMap(
+                            options: MapOptions(
+                              initialCenter: LatLng(
+                                imovel.localizacao.latitude!,
+                                imovel.localizacao.longitude!,
+                              ),
+                              initialZoom: 15,
+                            ),
+                            children: [
+                              TileLayer(
+                                urlTemplate:
+                                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                userAgentPackageName:
+                                    'com.example.aluguel_imoveis_app',
+                              ),
+                              MarkerLayer(
+                                markers: [
+                                  Marker(
+                                    point: LatLng(
+                                      imovel.localizacao.latitude!,
+                                      imovel.localizacao.longitude!,
+                                    ),
+                                    width: 44,
+                                    height: 44,
+                                    child: const Icon(
+                                      Icons.location_pin,
+                                      color: Colors.red,
+                                      size: 42,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              RichAttributionWidget(
+                                attributions: [
+                                  TextSourceAttribution(
+                                    '© OpenStreetMap contributors',
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    if (imovel.localizacao.latitude != null &&
+                        imovel.localizacao.longitude != null)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            _abrirRota(
+                              imovel.localizacao.latitude!,
+                              imovel.localizacao.longitude!,
+                            );
+                          },
+                          icon: const Icon(Icons.directions),
+                          label: const Text('Abrir rota no app de mapas'),
+                        ),
+                      ),
                     Text(imovel.descricao),
                     _secaoDetalhesNatureza(imovel),
                     const SizedBox(height: 16),

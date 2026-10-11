@@ -5,8 +5,16 @@ import '../models/imovel_enums.dart';
 class ImovelCard extends StatelessWidget {
   final Imovel imovel;
   final VoidCallback onTap;
+  final bool isFavorito;
+  final VoidCallback onAlternarFavorito;
 
-  const ImovelCard({super.key, required this.imovel, required this.onTap});
+  const ImovelCard({
+    super.key,
+    required this.imovel,
+    required this.onTap,
+    required this.isFavorito,
+    required this.onAlternarFavorito,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -66,6 +74,20 @@ class ImovelCard extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                           fontSize: 11,
                         ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: IconButton.filledTonal(
+                      tooltip: isFavorito
+                          ? 'Remover dos favoritos'
+                          : 'Adicionar aos favoritos',
+                      onPressed: onAlternarFavorito,
+                      icon: Icon(
+                        isFavorito ? Icons.favorite : Icons.favorite_border,
+                        color: isFavorito ? Colors.red : null,
                       ),
                     ),
                   ),

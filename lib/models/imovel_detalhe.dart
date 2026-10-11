@@ -1,3 +1,5 @@
+import 'imovel_enums.dart' show SituacaoImovel;
+
 enum NaturezaImovel { casa, apartamento, terreno, lote }
 
 enum FinalidadeImovel { venda, aluguel }
@@ -6,11 +8,15 @@ class LocalizacaoImovel {
   final String cidade;
   final String uf;
   final String bairro;
+  final double? latitude;
+  final double? longitude;
 
   const LocalizacaoImovel({
     required this.cidade,
     required this.uf,
     required this.bairro,
+    this.latitude,
+    this.longitude,
   });
 
   factory LocalizacaoImovel.fromJson(Map<String, dynamic> json) {
@@ -18,6 +24,8 @@ class LocalizacaoImovel {
       cidade: json['cidade'] as String,
       uf: json['uf'] as String,
       bairro: json['bairro'] as String,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
     );
   }
 }
@@ -110,6 +118,7 @@ class ImovelDetalhe {
   final String titulo;
   final String descricao;
   final NaturezaImovel natureza;
+  final SituacaoImovel situacao;
   final List<FinalidadeImovel> finalidades;
   final LocalizacaoImovel localizacao;
 
@@ -139,6 +148,7 @@ class ImovelDetalhe {
     required this.iptuAnual,
     required this.caracteristicas,
     required this.fotos,
+    this.situacao = SituacaoImovel.disponivel,
     required this.corretor,
   });
 
@@ -157,6 +167,7 @@ class ImovelDetalhe {
       localizacao: LocalizacaoImovel.fromJson(
         json['localizacao'] as Map<String, dynamic>,
       ),
+      situacao: _lerSituacaoImovel(json['situacao']),
       detalhes: Map<String, dynamic>.from(
         json['detalhes'] as Map,
       ),
@@ -213,4 +224,13 @@ FinalidadeImovel _lerFinalidade(String valor) {
 
 double? _lerNumeroOpcional(dynamic valor) {
   return valor == null ? null : (valor as num).toDouble();
+}
+
+SituacaoImovel _lerSituacaoImovel(dynamic valor) {
+  final nome = valor?.toString().trim().toLowerCase();
+
+  return SituacaoImovel.values.firstWhere(
+    (situacao) => situacao.name == nome,
+    orElse: () => SituacaoImovel.disponivel,
+  );
 }
