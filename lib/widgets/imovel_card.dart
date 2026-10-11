@@ -15,7 +15,7 @@ class ImovelCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -42,8 +42,12 @@ class ImovelCard extends StatelessWidget {
                     fit: BoxFit.cover,
                     errorBuilder: (_, _, _) => Container(
                       height: 180,
-                      color: Colors.grey.shade200,
-                      child: const Icon(Icons.home, size: 50, color: Colors.grey),
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      child: Icon(
+                        Icons.home,
+                        size: 50,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
                   Positioned(
@@ -85,11 +89,18 @@ class ImovelCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.location_on_outlined, size: 16, color: Colors.grey.shade600),
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           '${imovel.bairro}, ${imovel.cidade}',
-                          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontSize: 13,
+                          ),
                         ),
                       ],
                     ),
@@ -109,11 +120,19 @@ class ImovelCard extends StatelessWidget {
                         ),
                         Row(
                           children: [
-                            Icon(Icons.king_bed_outlined, size: 18, color: Colors.grey.shade700),
+                            Icon(
+                              Icons.king_bed_outlined,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
                             const SizedBox(width: 4),
                             Text('${imovel.quartos}', style: const TextStyle(fontWeight: FontWeight.w600)),
                             const SizedBox(width: 12),
-                            Icon(Icons.square_foot, size: 18, color: Colors.grey.shade700),
+                            Icon(
+                              Icons.square_foot,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
                             const SizedBox(width: 4),
                             Text('${imovel.areaM2.toInt()}m²', style: const TextStyle(fontWeight: FontWeight.w600)),
                           ],

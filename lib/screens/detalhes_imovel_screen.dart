@@ -246,6 +246,17 @@ class _GaleriaImovelState extends State<GaleriaImovel> {
     return fotos;
   }
 
+  void _abrirImagemMaximizada(List<FotoImovel> fotos, int indiceInicial) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _GaleriaImagemMaximizada(
+          fotos: fotos,
+          indiceInicial: indiceInicial,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final fotos = _fotosOrdenadas;
@@ -271,17 +282,20 @@ class _GaleriaImovelState extends State<GaleriaImovel> {
               });
             },
             itemBuilder: (context, index) {
-              return Image.network(
-                fotos[index].url,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: Colors.black12,
-                    alignment: Alignment.center,
-                    child: const Icon(Icons.broken_image, size: 48),
-                  );
-                },
+              return GestureDetector(
+                onTap: () => _abrirImagemMaximizada(fotos, index),
+                child: Image.network(
+                  fotos[index].url,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.black12,
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.broken_image, size: 48),
+                    );
+                  },
+                ),
               );
             },
           ),
@@ -305,6 +319,113 @@ class _GaleriaImovelState extends State<GaleriaImovel> {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _GaleriaImagemMaximizada extends StatefulWidget {
+  final List<FotoImovel> fotos;
+  final int indiceInicial;
+
+  const _GaleriaImagemMaximizada({
+    required this.fotos,
+    required this.indiceInicial,
+  });
+
+  @override
+  State<_GaleriaImagemMaximizada> createState() =>
+      _GaleriaImagemMaximizadaState();
+}
+
+class _GaleriaImagemMaximizadaState extends State<_GaleriaImagemMaximizada> {
+  late final PageController _pageController;
+  late int _paginaAtual;
+
+  @override
+  void initState() {
+    super.initState();
+    _paginaAtual = widget.indiceInicial;
+    _pageController = PageController(initialPage: widget.indiceInicial);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            PageView.builder(
+              controller: _pageController,
+              itemCount: widget.fotos.length,
+              onPageChanged: (pagina) {
+                setState(() {
+                  _paginaAtual = pagina;
+                });
+              },
+              itemBuilder: (context, index) {
+                return Center(
+                  child: Image.network(
+                    widget.fotos[index].url,
+                    fit: BoxFit.contain,
+                    width: double.infinity,
+                    height: double.infinity,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(
+                      Icons.broken_image,
+                      color: Colors.white,
+                      size: 48,
+                    ),
+                  ),
+                );
+              },
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  tooltip: 'Fechar imagem ampliada',
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close, color: Colors.white),
+                ),
+              ),
+            ),
+            if (widget.fotos.length > 1)
+              Positioned(
+                bottom: 16,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${_paginaAtual + 1} de ${widget.fotos.length}',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

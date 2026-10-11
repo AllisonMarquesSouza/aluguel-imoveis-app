@@ -6,7 +6,14 @@ import '../widgets/imovel_card.dart';
 import 'filtros_vitrine_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final bool temaEscuro;
+  final Future<void> Function(bool) onTemaAlterado;
+
+  const HomeScreen({
+    super.key,
+    required this.temaEscuro,
+    required this.onTemaAlterado,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -104,10 +111,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         title: GestureDetector(
           onTap: () async {
               final novaCidade = await Navigator.pushNamed(
@@ -128,18 +135,38 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(width: 6),
               Text(
                 cidadeAtual,
-                style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 18),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
-              const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
+              Icon(
+                Icons.keyboard_arrow_down,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ],
           ),
         ),
+          actions: [
+      IconButton(
+        tooltip: widget.temaEscuro
+            ? 'Ativar tema claro'  
+            : 'Ativar tema escuro',
+        icon: Icon(
+          widget.temaEscuro ? Icons.light_mode : Icons.dark_mode,
+        ),
+        onPressed: () {
+          widget.onTemaAlterado(!widget.temaEscuro);
+        },
+      ),
+    ],
       ),
       body: Column(
         children: [
           // Barra de Pesquisa e Ordenação
           Container(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Column(
               children: [
@@ -152,7 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     hintText: 'Buscar por título ou bairro...',
                     prefixIcon: const Icon(Icons.search),
                     filled: true,
-                    fillColor: Colors.grey.shade100,
+                    fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                     contentPadding: const EdgeInsets.symmetric(vertical: 0),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -259,7 +286,9 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         selectedColor: Theme.of(context).primaryColor,
         labelStyle: TextStyle(
-          color: selecionado ? Colors.white : Colors.black87,
+          color: selecionado
+              ? Theme.of(context).colorScheme.onPrimary
+              : Theme.of(context).colorScheme.onSurface,
           fontSize: 12,
         ),
       ),

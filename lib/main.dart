@@ -1,16 +1,61 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'screens/home_screen.dart';
 import 'screens/selecao_cidade_screen.dart';
 import 'screens/detalhes_imovel_screen.dart';
 import 'screens/perfil_corretor_screen.dart';
 import 'models/imovel_detalhe.dart';
 
-void main() {
-  runApp(const AppAluguel());
+const String _chaveTemaEscuro = 'tema_escuro';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final preferencias = SharedPreferencesAsync();
+  final temaEscuroInicial =
+      await preferencias.getBool(_chaveTemaEscuro) ?? false;
+
+  runApp(
+    AppAluguel(
+      preferencias: preferencias,
+      temaEscuroInicial: temaEscuroInicial,
+    ),
+  );
 }
 
-class AppAluguel extends StatelessWidget {
-  const AppAluguel({super.key});
+class AppAluguel extends StatefulWidget {
+  final SharedPreferencesAsync preferencias;
+  final bool temaEscuroInicial;
+
+  const AppAluguel({
+    super.key,
+    required this.preferencias,
+    required this.temaEscuroInicial,
+  });
+
+  @override
+  State<AppAluguel> createState() => _AppAluguelState();
+}
+
+class _AppAluguelState extends State<AppAluguel> {
+  late bool _temaEscuro;
+
+  @override
+  void initState() {
+    super.initState();
+    _temaEscuro = widget.temaEscuroInicial;
+  }
+
+  Future<void> _salvarTema(bool temaEscuro) async {
+    await widget.preferencias.setBool(_chaveTemaEscuro, temaEscuro);
+
+    if (!mounted) return;
+
+    setState(() {
+      _temaEscuro = temaEscuro;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,18 +63,30 @@ class AppAluguel extends StatelessWidget {
       title: 'App Aluguel',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue.shade900),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue.shade900,
+          brightness: Brightness.light,
+        ),
         useMaterial3: true,
       ),
-      // Definindo as rotas pré-montadas do projeto
-           initialRoute: '/',
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue.shade900,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+      ),
+      themeMode: _temaEscuro ? ThemeMode.dark : ThemeMode.light,
+      initialRoute: '/',
       routes: {
-        '/': (context) => const HomeScreen(),
+        '/': (context) => HomeScreen(
+              temaEscuro: _temaEscuro,
+              onTemaAlterado: _salvarTema,
+            ),
         '/selecionar-cidade': (context) => const SelecaoCidadeScreen(),
         '/detalhes-imovel': (context) {
           final imovelId =
               ModalRoute.of(context)!.settings.arguments as String;
-
           return DetalhesImovelScreen(imovelId: imovelId);
         },
         '/perfil-corretor': (context) {
