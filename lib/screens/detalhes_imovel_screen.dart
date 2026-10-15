@@ -1,100 +1,128 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/imovel.dart';
+import '../services/imovel_service.dart';
 
 class DetalhesImovelScreen extends StatelessWidget {
   const DetalhesImovelScreen({super.key});
 
+  Future<void> _abrirCanalContato(
+      BuildContext context, {
+        required Imovel imovel,
+        required CanalContato canal,
+      }) async {
+    final ImovelService service = ImovelServiceMock();
+
+    // 1. Registra o contato na API no momento do disparo
+    await service.registrarContato(
+      imovelId: imovel.id,
+      corretorTelefone: imovel.corretorTelefone,
+      canal: canal,
+    );
+
+    Uri url;
+
+    switch (canal) {
+      case CanalContato.whatsapp:
+      // Mensagem pré-formatada montada com código e título
+        final texto = Uri.encodeComponent(
+          'Olá, tenho interesse no imóvel "${imovel.titulo}" (Código: ${imovel.codigo}). Podemos conversar?',
+        );
+        url = Uri.parse('https://wa.me/${imovel.corretorTelefone}?text=$texto');
+        break;
+
+      case CanalContato.telefone:
+        url = Uri.parse('tel:${imovel.corretorTelefone}');
+        break;
+
+      case CanalContato.email:
+        final assunto = Uri.encodeComponent('Interesse no imóvel ${imovel.codigo}');
+        url = Uri.parse('mailto:${imovel.corretorEmail}?subject=$assunto');
+        break;
+    }
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não foi possível abrir o aplicativo associado.')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Recupera o objeto enviado via arguments na rota
     final imovel = ModalRoute.of(context)?.settings.arguments as Imovel?;
 
     if (imovel == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Erro')),
+        appBar: AppBar(title: const Text('Detalhes')),
         body: const Center(child: Text('Imóvel não encontrado.')),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(imovel.titulo),
-      ),
+      appBar: AppBar(title: Text(imovel.titulo)),
       body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Imagem do imóvel
-            Image.network(
-              imovel.imagemUrl,
-              height: 250,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  height: 250,
-                  color: Colors.grey.shade300,
-                  child: const Icon(Icons.home, size: 80, color: Colors.grey),
-                );
-              },
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
+            Image.network(imovel.imagemUrl, height: 220, width: double.infinity, fit: BoxFit.cover),
+            const SizedBox(height: 16),
+            Text('R\$ ${imovel.preco}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            Text('${imovel.bairro}, ${imovel.cidade}', style: const TextStyle(color: Colors.grey)),
+            const Divider(height: 32),
+
+            // Card do Corretor com opções de contato
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'R\$ ${imovel.preco.toStringAsFixed(2)} / mês',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                      Chip(
-                        avatar: const Icon(Icons.king_bed, size: 18),
-                        label: Text('${imovel.quartos} quartos'),
-                      ),
-                    ],
-                  ),
+                  Text('Corretor: ${imovel.corretorNome}', style: const TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      Text(
-                        imovel.cidade,
-                        style: const TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 32),
-                  const Text(
-                    'Descrição',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Excelente imóvel bem localizado, próximo a comércios, transportes e vias de acesso principal. Ideal para quem busca conforto e praticidade.',
-                    style: TextStyle(fontSize: 15, height: 1.4),
-                  ),
-                  const SizedBox(height: 32),
+
+                  // Botão WhatsApp Principal
                   SizedBox(
                     width: double.infinity,
-                    height: 48,
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        // Ação futura: Entrar em contato com o anunciante
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Iniciando contato com o proprietário...')),
-                        );
-                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade600,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => _abrirCanalContato(context, imovel: imovel, canal: CanalContato.whatsapp),
                       icon: const Icon(Icons.chat),
-                      label: const Text('Tenho Interesse'),
+                      label: const Text('Falar no WhatsApp'),
                     ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Alternativas (Telefone e E-mail)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _abrirCanalContato(context, imovel: imovel, canal: CanalContato.telefone),
+                          icon: const Icon(Icons.phone),
+                          label: const Text('Ligar'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _abrirCanalContato(context, imovel: imovel, canal: CanalContato.email),
+                          icon: const Icon(Icons.email),
+                          label: const Text('E-mail'),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
