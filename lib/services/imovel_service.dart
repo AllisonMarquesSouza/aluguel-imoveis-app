@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import '../models/imovel.dart';
 
 enum TipoOrdenacao { menorPreco, maiorPreco, maiorArea, maisRecentes }
+enum CanalContato { whatsapp, telefone, email }
 
 abstract class ImovelService {
   Future<List<String>> getCidadesAtendidas();
@@ -10,19 +12,22 @@ abstract class ImovelService {
     TipoOrdenacao? ordenacao,
     int pagina = 1,
   });
+
+  // Método exigido para registrar a interação na API
+  Future<void> registrarContato({
+    required String imovelId,
+    required String corretorTelefone,
+    required CanalContato canal,
+  });
 }
 
 class ImovelServiceMock implements ImovelService {
-  final List<String> _cidadesMock = [
-    'São Paulo',
-    'Rio de Janeiro',
-    'Curitiba',
-    'Belo Horizonte',
-  ];
+  final List<String> _cidadesMock = ['São Paulo', 'Rio de Janeiro', 'Curitiba'];
 
   final List<Imovel> _imoveisBase = [
     Imovel(
       id: '1',
+      codigo: 'SP-101',
       titulo: 'Apartamento de Luxo com Varanda',
       cidade: 'São Paulo',
       bairro: 'Moema',
@@ -31,39 +36,15 @@ class ImovelServiceMock implements ImovelService {
       quartos: 2,
       imagemUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800',
       natureza: NaturezaImovel.aluguel,
-      dataCriacao: DateTime.now().subtract(const Duration(days: 2)),
-    ),
-    Imovel(
-      id: '2',
-      titulo: 'Casa Moderna em Condomínio',
-      cidade: 'São Paulo',
-      bairro: 'Jardins',
-      preco: 850000.0,
-      areaM2: 210.0,
-      quartos: 4,
-      imagemUrl: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800',
-      natureza: NaturezaImovel.venda,
-      dataCriacao: DateTime.now().subtract(const Duration(days: 10)),
-    ),
-    Imovel(
-      id: '3',
-      titulo: 'Studio Totalmente Mobiliado',
-      cidade: 'São Paulo',
-      bairro: 'Pinheiros',
-      preco: 2200.0,
-      areaM2: 38.0,
-      quartos: 1,
-      imagemUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
-      natureza: NaturezaImovel.aluguel,
-      dataCriacao: DateTime.now().subtract(const Duration(hours: 5)),
+      dataCriacao: DateTime.now(),
+      corretorNome: 'Carlos Silva',
+      corretorTelefone: '5511999999999',
+      corretorEmail: 'carlos.corretor@email.com',
     ),
   ];
 
   @override
-  Future<List<String>> getCidadesAtendidas() async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return _cidadesMock;
-  }
+  Future<List<String>> getCidadesAtendidas() async => _cidadesMock;
 
   @override
   Future<List<Imovel>> getImoveis({
@@ -72,36 +53,17 @@ class ImovelServiceMock implements ImovelService {
     TipoOrdenacao? ordenacao,
     int pagina = 1,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 500));
+    return _imoveisBase.where((i) => i.cidade == cidade).toList();
+  }
 
-    var resultados = _imoveisBase.where((i) => i.cidade == cidade).toList();
-
-    // Filtro por texto da busca
-    if (busca != null && busca.isNotEmpty) {
-      resultados = resultados.where((i) {
-        final termo = busca.toLowerCase();
-        return i.titulo.toLowerCase().contains(termo) ||
-            i.bairro.toLowerCase().contains(termo);
-      }).toList();
-    }
-
-    // Ordenação
-    switch (ordenacao) {
-      case TipoOrdenacao.menorPreco:
-        resultados.sort((a, b) => a.preco.compareTo(b.preco));
-        break;
-      case TipoOrdenacao.maiorPreco:
-        resultados.sort((a, b) => b.preco.compareTo(a.preco));
-        break;
-      case TipoOrdenacao.maiorArea:
-        resultados.sort((a, b) => b.areaM2.compareTo(a.areaM2));
-        break;
-      case TipoOrdenacao.maisRecentes:
-      default:
-        resultados.sort((a, b) => b.dataCriacao.compareTo(a.dataCriacao));
-        break;
-    }
-
-    return resultados;
+  @override
+  Future<void> registrarContato({
+    required String imovelId,
+    required String corretorTelefone,
+    required CanalContato canal,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    // Registrado com sucesso na API para a caixa do corretor e painel do gestor
+    debugPrint('LOG API: Contato registrado -> Imóvel: $imovelId, Canal: ${canal.name}');
   }
 }
