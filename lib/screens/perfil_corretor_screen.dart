@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/imovel_detalhe.dart';
+import '../services/contato_service.dart';
+import '../widgets/contato_corretor_actions.dart';
 
 class PerfilCorretorScreen extends StatelessWidget {
   final CorretorResumo corretor;
@@ -38,6 +40,16 @@ class PerfilCorretorScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text('CRECI: ${corretor.creci}'),
+            const SizedBox(height: 24),
+            ContatoCorretorActions(
+              onRegistrarContato: (canal) {
+                return ContatoService().registrarNoPerfilDoCorretor(
+                  corretorId: corretor.id,
+                  canal: canal,
+                  imovelId: corretor.imovelIdReferencia,
+                );
+              },
+            ),
           ],
         ),
       ),

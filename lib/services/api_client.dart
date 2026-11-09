@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
@@ -50,6 +51,46 @@ class ApiClient {
     } catch (_) {
       throw const ApiException(
         'Não foi possível conectar à API. Confira o endereço e se o servidor está disponível.',
+      );
+    }
+  }
+
+  Future<http.Response> postJson(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    try {
+      final response = await _http
+          .post(
+            uri(path),
+            headers: const {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        throw const ApiException('A API recusou o registro do contato.');
+      }
+
+      if (response.statusCode == 404) {
+        throw const ApiException('O imóvel ou corretor não foi encontrado.');
+      }
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw ApiException(
+          'Não foi possível registrar o contato (HTTP ${response.statusCode}).',
+        );
+      }
+
+      return response;
+    } on ApiException {
+      rethrow;
+    } catch (_) {
+      throw const ApiException(
+        'Não foi possível conectar à API para registrar o contato.',
       );
     }
   }

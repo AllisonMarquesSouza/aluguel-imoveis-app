@@ -96,12 +96,14 @@ class CorretorResumo {
   final String nome;
   final String creci;
   final String fotoUrl;
+  final String? imovelIdReferencia;
 
   const CorretorResumo({
     required this.id,
     required this.nome,
     required this.creci,
     required this.fotoUrl,
+    this.imovelIdReferencia,
   });
 
   factory CorretorResumo.fromJson(Map<String, dynamic> json) {
@@ -110,6 +112,16 @@ class CorretorResumo {
       nome: json['nome'] as String,
       creci: json['creci'] as String,
       fotoUrl: json['fotoUrl'] as String,
+    );
+  }
+
+  CorretorResumo comImovelReferencia(String imovelId) {
+    return CorretorResumo(
+      id: id,
+      nome: nome,
+      creci: creci,
+      fotoUrl: fotoUrl,
+      imovelIdReferencia: imovelId,
     );
   }
 }

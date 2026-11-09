@@ -7,6 +7,8 @@ import '../models/imovel_detalhe.dart';
 import '../models/imovel.dart';
 import '../services/imovel_detalhe_service.dart';
 import '../services/favoritos_service.dart';
+import '../services/contato_service.dart';
+import '../widgets/contato_corretor_actions.dart';
 
 class DetalhesImovelScreen extends StatefulWidget {
   final String imovelId;
@@ -319,32 +321,49 @@ class _DetalhesImovelScreenState extends State<DetalhesImovelScreen> {
                         'IPTU: ${_formatarMoeda(imovel.iptuAnual!)} por ano',
                       ),
                     const SizedBox(height: 24),
-                    if (imovel.corretor != null) ListTile(
-                      leading: CircleAvatar(
-                        child: ClipOval(
-                          child: Image.network(
-                            imovel.corretor!.fotoUrl,
-                            width: 48,
-                            height: 48,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.person),
+                    if (imovel.corretor != null) ...[
+                      Text(
+                        'Fale com o corretor',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 8),
+                      ContatoCorretorActions(
+                        onRegistrarContato: (canal) {
+                          return ContatoService().registrarNoImovel(
+                            imovelId: imovel.id,
+                            canal: canal,
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      ListTile(
+                        leading: CircleAvatar(
+                          child: ClipOval(
+                            child: Image.network(
+                              imovel.corretor!.fotoUrl,
+                              width: 48,
+                              height: 48,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(Icons.person),
+                            ),
                           ),
                         ),
+                        title: Text(imovel.corretor!.nome),
+                        subtitle: imovel.corretor!.creci.isEmpty
+                            ? null
+                            : Text('CRECI: ${imovel.corretor!.creci}'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          Navigator.pushNamed(
+                            context,
+                            '/perfil-corretor',
+                            arguments: imovel.corretor!
+                                .comImovelReferencia(imovel.id),
+                          );
+                        },
                       ),
-                      title: Text(imovel.corretor!.nome),
-                      subtitle: imovel.corretor!.creci.isEmpty
-                          ? null
-                          : Text('CRECI: ${imovel.corretor!.creci}'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        Navigator.pushNamed(
-                          context,
-                          '/perfil-corretor',
-                          arguments: imovel.corretor,
-                        );
-                      },
-                    ),
+                    ],
                   ],
                 ),
               ),
