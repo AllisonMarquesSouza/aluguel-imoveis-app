@@ -75,6 +75,10 @@ class _DetalhesImovelScreenState extends State<DetalhesImovelScreen> {
     late final List<MapEntry<String, String>> campos;
 
     switch (imovel.natureza) {
+      case null:
+        titulo = 'Detalhes do imóvel';
+        campos = const [];
+        break;
       case NaturezaImovel.casa:
         titulo = 'Detalhes da casa';
         campos = const [
@@ -315,11 +319,11 @@ class _DetalhesImovelScreenState extends State<DetalhesImovelScreen> {
                         'IPTU: ${_formatarMoeda(imovel.iptuAnual!)} por ano',
                       ),
                     const SizedBox(height: 24),
-                    ListTile(
+                    if (imovel.corretor != null) ListTile(
                       leading: CircleAvatar(
                         child: ClipOval(
                           child: Image.network(
-                            imovel.corretor.fotoUrl,
+                            imovel.corretor!.fotoUrl,
                             width: 48,
                             height: 48,
                             fit: BoxFit.cover,
@@ -328,8 +332,10 @@ class _DetalhesImovelScreenState extends State<DetalhesImovelScreen> {
                           ),
                         ),
                       ),
-                      title: Text(imovel.corretor.nome),
-                      subtitle: Text('CRECI: ${imovel.corretor.creci}'),
+                      title: Text(imovel.corretor!.nome),
+                      subtitle: imovel.corretor!.creci.isEmpty
+                          ? null
+                          : Text('CRECI: ${imovel.corretor!.creci}'),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         Navigator.pushNamed(

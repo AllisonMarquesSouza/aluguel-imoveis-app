@@ -43,7 +43,13 @@ class ImovelCard extends StatelessWidget {
               // Foto de Capa + Badges
               Stack(
                 children: [
-                  Image.network(
+                  imovel.imagemUrl.isEmpty
+                      ? Container(
+                          height: 180,
+                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          child: const Center(child: Icon(Icons.home, size: 50)),
+                        )
+                      : Image.network(
                     imovel.imagemUrl,
                     height: 180,
                     width: double.infinity,
@@ -142,6 +148,7 @@ class ImovelCard extends StatelessWidget {
                         ),
                         Row(
                           children: [
+                            if (imovel.quartos != null) ...[
                             Icon(
                               Icons.king_bed_outlined,
                               size: 18,
@@ -149,6 +156,8 @@ class ImovelCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text('${imovel.quartos}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ],
+                            if (imovel.areaM2 != null) ...[
                             const SizedBox(width: 12),
                             Icon(
                               Icons.square_foot,
@@ -156,7 +165,8 @@ class ImovelCard extends StatelessWidget {
                               color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                             const SizedBox(width: 4),
-                            Text('${imovel.areaM2.toInt()}m²', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            Text('${imovel.areaM2!.toInt()}m²', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ],
                           ],
                         ),
                       ],

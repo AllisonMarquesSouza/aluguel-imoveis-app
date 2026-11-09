@@ -1,4 +1,5 @@
 import 'imovel_enums.dart' show SituacaoImovel;
+import '../services/api_client.dart';
 
 enum NaturezaImovel { casa, apartamento, terreno, lote }
 
@@ -21,9 +22,9 @@ class LocalizacaoImovel {
 
   factory LocalizacaoImovel.fromJson(Map<String, dynamic> json) {
     return LocalizacaoImovel(
-      cidade: json['cidade'] as String,
-      uf: json['uf'] as String,
-      bairro: json['bairro'] as String,
+      cidade: json['cidade']?.toString() ?? '',
+      uf: json['uf']?.toString() ?? '',
+      bairro: json['bairro']?.toString() ?? '',
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
     );
@@ -117,8 +118,8 @@ class ImovelDetalhe {
   final String id;
   final String titulo;
   final String descricao;
-  final NaturezaImovel natureza;
-  final SituacaoImovel situacao;
+  final NaturezaImovel? natureza;
+  final SituacaoImovel? situacao;
   final List<FinalidadeImovel> finalidades;
   final LocalizacaoImovel localizacao;
 
@@ -132,13 +133,13 @@ class ImovelDetalhe {
   final double? iptuAnual;
   final List<CaracteristicaImovel> caracteristicas;
   final List<FotoImovel> fotos;
-  final CorretorResumo corretor;
+  final CorretorResumo? corretor;
 
   const ImovelDetalhe({
     required this.id,
     required this.titulo,
     required this.descricao,
-    required this.natureza,
+    this.natureza,
     required this.finalidades,
     required this.localizacao,
     required this.detalhes,
@@ -148,33 +149,55 @@ class ImovelDetalhe {
     required this.iptuAnual,
     required this.caracteristicas,
     required this.fotos,
-    this.situacao = SituacaoImovel.disponivel,
-    required this.corretor,
+    this.situacao,
+    this.corretor,
   });
 
   factory ImovelDetalhe.fromJson(Map<String, dynamic> json) {
-    final valores = json['valores'] as Map<String, dynamic>;
+    final endereco = Map<String, dynamic>.from(
+      (json['endereco'] ?? json['localizacao']) as Map,
+    );
+    final valores = json['valores'] is Map
+        ? Map<String, dynamic>.from(json['valores'] as Map)
+        : json;
     final vendaJson = valores['venda'] as Map<String, dynamic>?;
+    final finalidade = json['finalidade']?.toString();
+    final corretorJson = json['corretor'] is Map
+        ? Map<String, dynamic>.from(json['corretor'] as Map)
+        : null;
+    final fotos = (json['fotos'] as List? ?? const []).map((item) {
+      final foto = Map<String, dynamic>.from(item as Map);
+      final url = foto['url']?.toString() ?? '';
+      return FotoImovel(
+        id: (foto['id'] ?? '').toString(),
+        url: url.startsWith('http') ? url : '${ApiClient.baseUrl}$url',
+        ordem: (foto['ordem'] as num?)?.toInt() ?? 0,
+        capa: foto['capa'] == true,
+      );
+    }).toList();
 
     return ImovelDetalhe(
       id: json['id'].toString(),
-      titulo: json['titulo'] as String,
-      descricao: json['descricao'] as String,
-      natureza: _lerNatureza(json['natureza'] as String),
-      finalidades: (json['finalidades'] as List<dynamic>)
+      titulo: json['titulo']?.toString() ?? '',
+      descricao: json['descricao']?.toString() ?? '',
+      natureza: json['natureza'] == null ? null : _lerNatureza(json['natureza'] as String),
+      finalidades: (json['finalidades'] as List<dynamic>? ??
+              (finalidade == null ? const [] : [finalidade]))
           .map((valor) => _lerFinalidade(valor as String))
           .toList(),
       localizacao: LocalizacaoImovel.fromJson(
-        json['localizacao'] as Map<String, dynamic>,
+        endereco,
       ),
       situacao: _lerSituacaoImovel(json['situacao']),
-      detalhes: Map<String, dynamic>.from(
-        json['detalhes'] as Map,
-      ),
-      venda: vendaJson == null ? null : PrecoVenda.fromJson(vendaJson),
-      aluguelMensal: _lerNumeroOpcional(valores['aluguelMensal']),
-      condominioMensal: _lerNumeroOpcional(valores['condominioMensal']),
-      iptuAnual: _lerNumeroOpcional(valores['iptuAnual']),
+      detalhes: Map<String, dynamic>.from(json['detalhes'] as Map? ?? const {}),
+      venda: vendaJson != null
+          ? PrecoVenda.fromJson(vendaJson)
+          : _lerNumeroOpcional(valores['valorVenda']) == null
+              ? null
+              : PrecoVenda(valor: _lerNumeroOpcional(valores['valorVenda'])!, moeda: 'BRL'),
+      aluguelMensal: _lerNumeroOpcional(valores['aluguelMensal'] ?? valores['valorAluguel']),
+      condominioMensal: _lerNumeroOpcional(valores['condominioMensal'] ?? valores['valorCondominio']),
+      iptuAnual: _lerNumeroOpcional(valores['iptuAnual'] ?? valores['valorIptu']),
       caracteristicas: (json['caracteristicas'] as List<dynamic>)
           .map(
             (item) => CaracteristicaImovel.fromJson(
@@ -182,16 +205,12 @@ class ImovelDetalhe {
             ),
           )
           .toList(),
-      fotos: (json['fotos'] as List<dynamic>)
-          .map(
-            (item) => FotoImovel.fromJson(
-              item as Map<String, dynamic>,
-            ),
-          )
-          .toList(),
-      corretor: CorretorResumo.fromJson(
-        json['corretor'] as Map<String, dynamic>,
-      ),
+      fotos: fotos,
+      corretor: corretorJson == null
+          ? (json['corretorId'] == null && json['nomeCorretor'] == null
+              ? null
+              : CorretorResumo(id: json['corretorId'].toString(), nome: json['nomeCorretor']?.toString() ?? '', creci: '', fotoUrl: ''))
+          : CorretorResumo.fromJson(corretorJson),
     );
   }
 }
@@ -226,11 +245,11 @@ double? _lerNumeroOpcional(dynamic valor) {
   return valor == null ? null : (valor as num).toDouble();
 }
 
-SituacaoImovel _lerSituacaoImovel(dynamic valor) {
+SituacaoImovel? _lerSituacaoImovel(dynamic valor) {
+  if (valor == null) return null;
   final nome = valor?.toString().trim().toLowerCase();
-
-  return SituacaoImovel.values.firstWhere(
-    (situacao) => situacao.name == nome,
-    orElse: () => SituacaoImovel.disponivel,
-  );
+  for (final situacao in SituacaoImovel.values) {
+    if (situacao.name == nome) return situacao;
+  }
+  return null;
 }

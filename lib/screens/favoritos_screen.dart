@@ -36,10 +36,10 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
     for (final imovel in favoritos) {
       try {
         final detalhe = await _imovelDetalheService.buscarPorId(imovel.id);
-        await widget.favoritosService.atualizarSituacao(
-          imovel.id,
-          detalhe.situacao,
-        );
+        final situacao = detalhe.situacao;
+        if (situacao != null) {
+          await widget.favoritosService.atualizarSituacao(imovel.id, situacao);
+        }
       } on ImovelIndisponivelException {
         await widget.favoritosService.atualizarSituacao(
           imovel.id,
@@ -88,11 +88,12 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (imovel.situacao != SituacaoImovel.disponivel)
+                  if (imovel.situacao != null &&
+                      imovel.situacao != SituacaoImovel.disponivel)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Text(
-                        _textoSituacao(imovel.situacao),
+                        _textoSituacao(imovel.situacao!),
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),

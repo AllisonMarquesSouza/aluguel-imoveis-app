@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/filtros_vitrine.dart';
 import '../models/imovel.dart';
 import '../services/imovel_service.dart';
+import '../services/api_client.dart';
 import '../services/favoritos_service.dart';
 import '../widgets/imovel_card.dart';
 import 'filtros_vitrine_sheet.dart';
@@ -26,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final ImovelService _service = ImovelServiceApi();
   final ScrollController _scrollController = ScrollController();
 
-  String cidadeAtual = 'Serra Talhada';
+  String cidadeAtual = '';
   String termoBusca = '';
   TipoOrdenacao ordenacaoSelecionada = TipoOrdenacao.maisRecentes;
   FiltrosVitrine filtrosVitrine = const FiltrosVitrine();
@@ -74,13 +75,15 @@ class _HomeScreenState extends State<HomeScreen> {
         totalResultados = resultados.total;
         carregando = false;
       });
-    } catch (_) {
+    } catch (erro) {
       if (!mounted) return;
 
       setState(() {
         listaImoveis = [];
         totalResultados = 0;
-        erroCarregamento = 'Não foi possível carregar os imóveis.';
+        erroCarregamento = erro is ApiException
+            ? erro.mensagem
+            : 'A resposta da API não pôde ser interpretada.';
         carregando = false;
       });
     }
@@ -137,7 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const Icon(Icons.location_on, color: Colors.redAccent, size: 22),
               const SizedBox(width: 6),
               Text(
-                cidadeAtual,
+                cidadeAtual.isEmpty ? 'Selecione uma cidade' : cidadeAtual,
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.bold,

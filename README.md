@@ -2,6 +2,12 @@
 
 A new Flutter project.
 
+## Configuração da API
+
+O app usa `API_BASE_URL` para apontar para a API. Sem configuração, usa `http://10.0.2.2:8080` no emulador Android e `http://localhost:8080` nas demais plataformas. Para informar outro endereço, execute o app com `--dart-define=API_BASE_URL=https://seu-servidor`.
+
+As chamadas do app usam os caminhos documentados pela API (`/cidade`, `/imovel` e `/imovel/{id}`). No estado atual, as consultas de cidades e imóveis exigem autenticação, e imóveis não podem ser filtrados por cidade no servidor. O app mostra o erro recebido nesses casos e não substitui os dados por exemplos locais. A vitrine pública depende de endpoints públicos correspondentes na API.
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.
