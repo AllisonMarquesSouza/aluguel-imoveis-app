@@ -12,6 +12,8 @@ class Imovel {
   final String imagemUrl;
   final NaturezaImovel natureza;
   final DateTime dataCriacao;
+  final int? corretorId;
+  final int? empresaId;
 
   // Dados do Corretor para a história A06
   final String corretorNome;
@@ -30,6 +32,8 @@ class Imovel {
     required this.imagemUrl,
     required this.natureza,
     required this.dataCriacao,
+    this.corretorId,
+    this.empresaId,
     required this.corretorNome,
     required this.corretorTelefone,
     required this.corretorEmail,
@@ -53,6 +57,8 @@ class Imovel {
       corretorNome: json['corretorNome'] ?? 'Corretor Parceiro',
       corretorTelefone: json['corretorTelefone'] ?? '5511999999999',
       corretorEmail: json['corretorEmail'] ?? 'corretor@imobiliaria.com',
+      corretorId: (json['corretorId'] as num?)?.toInt(),
+      empresaId: (json['empresaId'] as num?)?.toInt(),
     );
   }
 }

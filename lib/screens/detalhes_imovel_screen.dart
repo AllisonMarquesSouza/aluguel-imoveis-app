@@ -86,8 +86,38 @@ class DetalhesImovelScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Corretor: ${imovel.corretorNome}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
+                  Text(
+  'Corretor: ${imovel.corretorNome}',
+  style: const TextStyle(fontWeight: FontWeight.bold),
+),
+
+if (imovel.corretorId != null)
+  TextButton.icon(
+    onPressed: () {
+      Navigator.pushNamed(
+        context,
+        '/perfil-corretor',
+        arguments: imovel.corretorId,
+      );
+    },
+    icon: const Icon(Icons.person_outline),
+    label: const Text('Ver perfil público'),
+  ),
+
+  if (imovel.empresaId != null)
+  TextButton.icon(
+    onPressed: () {
+      Navigator.pushNamed(
+        context,
+        '/perfil-empresa',
+        arguments: imovel.empresaId,
+      );
+    },
+    icon: const Icon(Icons.business_outlined),
+    label: const Text('Ver perfil da empresa'),
+  ),
+
+const SizedBox(height: 12),
 
                   // Botão WhatsApp Principal
                   SizedBox(
