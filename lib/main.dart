@@ -7,6 +7,8 @@ import 'screens/favoritos_screen.dart';
 import 'screens/perfil_corretor_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/favoritos_service.dart';
+import 'services/auth_session.dart';
+import 'screens/acervo_corretor_screen.dart';
 import 'models/imovel.dart';
 
 const String _chaveTemaEscuro = 'tema_escuro';
@@ -15,6 +17,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final preferencias = SharedPreferencesAsync();
+  await AuthSession.instance.restaurar(preferencias);
   final temaEscuroInicial =
       await preferencias.getBool(_chaveTemaEscuro) ?? false;
   final favoritosService = FavoritosService(preferencias);
@@ -115,6 +118,7 @@ class _AppAluguelState extends State<AppAluguel> {
           return PerfilEmpresaPorIdScreen(empresaId: empresaId);
         },
         '/login': (context) => const LoginScreen(),
+        '/acervo-corretor': (context) => const AcervoCorretorScreen(),
       },
     );
   }

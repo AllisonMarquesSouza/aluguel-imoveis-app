@@ -70,9 +70,9 @@ class _LoginScreenState extends State<LoginScreen> {
         actions: [
           if (AuthSession.instance.autenticado)
             TextButton(
-              onPressed: () {
-                _authService.sair();
-                Navigator.pop(context, true);
+              onPressed: () async {
+                await _authService.sair();
+                if (mounted) Navigator.pop(context, true);
               },
               child: const Text('Sair'),
             ),

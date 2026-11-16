@@ -105,8 +105,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _abrirAcessoCorretor() async {
+    if (AuthSession.instance.autenticado) {
+      await Navigator.pushNamed(context, '/acervo-corretor');
+      return;
+    }
     final alterouSessao = await Navigator.pushNamed(context, '/login');
-    if (alterouSessao == true && mounted) _carregarImoveis(atualizarApi: true);
+    if (alterouSessao == true && mounted) {
+      _carregarImoveis(atualizarApi: true);
+      await Navigator.pushNamed(context, '/acervo-corretor');
+    }
   }
 
   @override

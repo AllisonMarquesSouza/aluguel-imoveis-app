@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -54,7 +55,9 @@ class ApiClient {
           .get(uri(path, query), headers: headers)
           .timeout(const Duration(seconds: 15));
       if (response.statusCode == 401 || response.statusCode == 403) {
-        if (response.statusCode == 401) AuthSession.instance.encerrar();
+        if (response.statusCode == 401) {
+          unawaited(AuthSession.instance.encerrar());
+        }
         throw ApiAuthenticationException(
           token == null
               ? 'Entre com uma conta de corretor ativa para consultar cidades e imóveis da sua empresa.'
@@ -94,14 +97,13 @@ class ApiClient {
           ? null
           : jsonDecode(utf8.decode(response.bodyBytes));
       if (response.statusCode == 401) {
-        throw const ApiException('E-mail ou senha inválidos, ou conta inativa.');
+        throw const ApiException('Não foi possível entrar. Confira seus dados e tente novamente.');
       }
       if (response.statusCode == 403) {
-        throw const ApiException('Esta conta não tem permissão para entrar no aplicativo.');
+        throw const ApiException('Não foi possível entrar. Confira seus dados e tente novamente.');
       }
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        final mensagem = corpo is Map ? corpo['message']?.toString() : null;
-        throw ApiException(mensagem ?? 'A API respondeu com erro HTTP ${response.statusCode}.');
+        throw const ApiException('Não foi possível entrar. Confira seus dados e tente novamente.');
       }
       if (corpo is! Map || corpo['token'] is! String || (corpo['token'] as String).isEmpty) {
         throw const FormatException('A resposta de autenticação não contém um token válido.');

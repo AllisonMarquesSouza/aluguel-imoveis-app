@@ -11,8 +11,8 @@ class AuthService {
 
   Future<void> entrar({required String email, required String senha}) async {
     final token = await _api.autenticar(email: email, senha: senha);
-    _sessao.iniciar(token);
+    await _sessao.iniciar(token);
   }
 
-  void sair() => _sessao.encerrar();
+  Future<void> sair() => _sessao.encerrar();
 }
