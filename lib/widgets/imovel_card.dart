@@ -1,20 +1,36 @@
 import 'package:flutter/material.dart';
 import '../models/imovel.dart';
+import '../models/imovel_enums.dart';
 
 class ImovelCard extends StatelessWidget {
   final Imovel imovel;
   final VoidCallback onTap;
+  final bool isFavorito;
+  final VoidCallback onAlternarFavorito;
 
-  const ImovelCard({super.key, required this.imovel, required this.onTap});
+  const ImovelCard({
+    super.key,
+    required this.imovel,
+    required this.onTap,
+    required this.isFavorito,
+    required this.onAlternarFavorito,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final isAluguel = imovel.natureza == NaturezaImovel.aluguel;
+    final isAluguel = imovel.finalidade == FinalidadeImovel.aluguel;
+    final finalidadeMista = imovel.finalidade == FinalidadeImovel.vendaEAluguel;
+    final textoPreco = finalidadeMista
+        ? 'Venda: R\$ ${(imovel.valorVenda ?? 0).toStringAsFixed(0)}\n'
+            'Aluguel: R\$ ${(imovel.valorAluguel ?? 0).toStringAsFixed(0)}/mês'
+        : isAluguel
+            ? 'R\$ ${imovel.preco.toStringAsFixed(0)} /mês'
+            : 'R\$ ${imovel.preco.toStringAsFixed(0)}';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -34,15 +50,25 @@ class ImovelCard extends StatelessWidget {
               // Foto de Capa + Badges
               Stack(
                 children: [
-                  Image.network(
+                  imovel.imagemUrl.isEmpty
+                      ? Container(
+                          height: 180,
+                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          child: const Center(child: Icon(Icons.home, size: 50)),
+                        )
+                      : Image.network(
                     imovel.imagemUrl,
                     height: 180,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     errorBuilder: (_, _, _) => Container(
                       height: 180,
-                      color: Colors.grey.shade200,
-                      child: const Icon(Icons.home, size: 50, color: Colors.grey),
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      child: Icon(
+                        Icons.home,
+                        size: 50,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
                   Positioned(
@@ -55,12 +81,30 @@ class ImovelCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        isAluguel ? 'ALUGUEL' : 'VENDA',
+                        finalidadeMista
+                            ? 'VENDA E ALUGUEL'
+                            : isAluguel
+                                ? 'ALUGUEL'
+                                : 'VENDA',
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 11,
                         ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: IconButton.filledTonal(
+                      tooltip: isFavorito
+                          ? 'Remover dos favoritos'
+                          : 'Adicionar aos favoritos',
+                      onPressed: onAlternarFavorito,
+                      icon: Icon(
+                        isFavorito ? Icons.favorite : Icons.favorite_border,
+                        color: isFavorito ? Colors.red : null,
                       ),
                     ),
                   ),
@@ -84,11 +128,18 @@ class ImovelCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.location_on_outlined, size: 16, color: Colors.grey.shade600),
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           '${imovel.bairro}, ${imovel.cidade}',
-                          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontSize: 13,
+                          ),
                         ),
                       ],
                     ),
@@ -97,9 +148,7 @@ class ImovelCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          isAluguel
-                              ? 'R\$ ${imovel.preco.toStringAsFixed(0)} /mês'
-                              : 'R\$ ${imovel.preco.toStringAsFixed(0)}',
+                          textoPreco,
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -108,13 +157,25 @@ class ImovelCard extends StatelessWidget {
                         ),
                         Row(
                           children: [
-                            Icon(Icons.king_bed_outlined, size: 18, color: Colors.grey.shade700),
+                            if (imovel.quartos != null) ...[
+                            Icon(
+                              Icons.king_bed_outlined,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
                             const SizedBox(width: 4),
                             Text('${imovel.quartos}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ],
+                            if (imovel.areaM2 != null) ...[
                             const SizedBox(width: 12),
-                            Icon(Icons.square_foot, size: 18, color: Colors.grey.shade700),
+                            Icon(
+                              Icons.square_foot,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
                             const SizedBox(width: 4),
-                            Text('${imovel.areaM2.toInt()}m²', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            Text('${imovel.areaM2!.toInt()}m²', style: const TextStyle(fontWeight: FontWeight.w600)),
+                            ],
                           ],
                         ),
                       ],

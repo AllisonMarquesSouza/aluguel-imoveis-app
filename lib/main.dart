@@ -1,15 +1,68 @@
-import 'screens/perfil_corretor_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_screen.dart';
 import 'screens/selecao_cidade_screen.dart';
 import 'screens/detalhes_imovel_screen.dart';
+import 'screens/favoritos_screen.dart';
+import 'screens/perfil_corretor_screen.dart';
+import 'screens/login_screen.dart';
+import 'services/favoritos_service.dart';
+import 'models/imovel.dart';
 
-void main() {
-  runApp(const AppAluguel());
+const String _chaveTemaEscuro = 'tema_escuro';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final preferencias = SharedPreferencesAsync();
+  final temaEscuroInicial =
+      await preferencias.getBool(_chaveTemaEscuro) ?? false;
+  final favoritosService = FavoritosService(preferencias);
+  await favoritosService.carregar();
+
+  runApp(
+    AppAluguel(
+      preferencias: preferencias,
+      temaEscuroInicial: temaEscuroInicial,
+      favoritosService: favoritosService,
+    ),
+  );
 }
 
-class AppAluguel extends StatelessWidget {
-  const AppAluguel({super.key});
+class AppAluguel extends StatefulWidget {
+  final SharedPreferencesAsync preferencias;
+  final bool temaEscuroInicial;
+  final FavoritosService favoritosService;
+
+  const AppAluguel({
+    super.key,
+    required this.preferencias,
+    required this.temaEscuroInicial,
+    required this.favoritosService,
+  });
+
+  @override
+  State<AppAluguel> createState() => _AppAluguelState();
+}
+
+class _AppAluguelState extends State<AppAluguel> {
+  late bool _temaEscuro;
+
+  @override
+  void initState() {
+    super.initState();
+    _temaEscuro = widget.temaEscuroInicial;
+  }
+
+  Future<void> _salvarTema(bool temaEscuro) async {
+    await widget.preferencias.setBool(_chaveTemaEscuro, temaEscuro);
+
+    if (!mounted) return;
+
+    setState(() {
+      _temaEscuro = temaEscuro;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,28 +70,52 @@ class AppAluguel extends StatelessWidget {
       title: 'App Aluguel',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue.shade900),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue.shade900,
+          brightness: Brightness.light,
+        ),
         useMaterial3: true,
       ),
-      // Definindo as rotas pré-montadas do projeto
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue.shade900,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+      ),
+      themeMode: _temaEscuro ? ThemeMode.dark : ThemeMode.light,
       initialRoute: '/',
       routes: {
-  '/': (context) => const HomeScreen(),
-  '/selecionar-cidade': (context) => const SelecaoCidadeScreen(),
-  '/detalhes-imovel': (context) => const DetalhesImovelScreen(),
-  '/perfil-corretor': (context) {
-    final corretorId =
-        ModalRoute.of(context)!.settings.arguments as int;
-
-    return PerfilCorretorScreen(corretorId: corretorId);
-  },
-  '/perfil-empresa': (context) {
-    final empresaId =
-        ModalRoute.of(context)!.settings.arguments as int;
-
-    return PerfilEmpresaPorIdScreen(empresaId: empresaId);
-  },
-},
+        '/': (context) => HomeScreen(
+              temaEscuro: _temaEscuro,
+              onTemaAlterado: _salvarTema,
+              favoritosService: widget.favoritosService,
+            ),
+        '/selecionar-cidade': (context) => const SelecaoCidadeScreen(),
+        '/detalhes-imovel': (context) {
+          final imovel =
+              ModalRoute.of(context)!.settings.arguments as Imovel;
+          return DetalhesImovelScreen(
+            imovelResumo: imovel,
+            imovelId: imovel.id,
+            favoritosService: widget.favoritosService,
+          );
+        },
+        '/favoritos': (context) => FavoritosScreen(
+              favoritosService: widget.favoritosService,
+            ),
+        '/perfil-corretor': (context) {
+          final corretorId =
+              ModalRoute.of(context)!.settings.arguments as int;
+          return PerfilCorretorScreen(corretorId: corretorId);
+        },
+        '/perfil-empresa': (context) {
+          final empresaId =
+              ModalRoute.of(context)!.settings.arguments as int;
+          return PerfilEmpresaPorIdScreen(empresaId: empresaId);
+        },
+        '/login': (context) => const LoginScreen(),
+      },
     );
   }
 }

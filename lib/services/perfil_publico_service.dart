@@ -1,71 +1,47 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
-
 import '../models/perfil_publico.dart';
+import 'api_client.dart';
 
 class PerfilNaoDisponivelException implements Exception {
   const PerfilNaoDisponivelException();
 }
 
 class PerfilPublicoService {
-  static final Uri _baseUri = Uri.parse(
-    const String.fromEnvironment(
-      'API_BASE_URL',
-      defaultValue: 'http://10.0.2.2:8080',
-    ),
-  );
+  final ApiClient _api;
 
-  static Uri resolverUrl(String valor) {
-    final uri = Uri.tryParse(valor);
-    if (uri != null && uri.hasScheme) return uri;
-    return _baseUri.resolve(valor);
-  }
+  PerfilPublicoService({ApiClient? apiClient})
+      : _api = apiClient ?? ApiClient();
+
+  static Uri resolverUrl(String value) => ApiClient.resolverUrl(value);
 
   Future<CorretorPublico> buscarCorretor(int id) async {
-    final resposta = await http.get(_baseUri.resolve('/corretor/$id'));
-
-    if (resposta.statusCode == 404) {
+    try {
+      final resposta = await _api.get('/corretor/$id');
+      final json = jsonDecode(utf8.decode(resposta.bodyBytes));
+      if (json is! Map<String, dynamic>) {
+        throw const FormatException('Resposta de perfil inválida.');
+      }
+      return CorretorPublico.fromJson(json);
+    } on ApiNotFoundException {
       throw const PerfilNaoDisponivelException();
     }
-
-    if (resposta.statusCode < 200 || resposta.statusCode >= 300) {
-      throw Exception('Não foi possível carregar o perfil.');
-    }
-
-    final json = jsonDecode(utf8.decode(resposta.bodyBytes));
-    if (json is! Map<String, dynamic>) {
-      throw const FormatException('Resposta de perfil inválida.');
-    }
-
-    return CorretorPublico.fromJson(json);
   }
 
   Future<EmpresaPublica> buscarEmpresa(int empresaId) async {
-  final resposta = await http.get(_baseUri.resolve('/corretor'));
-
-  if (resposta.statusCode < 200 || resposta.statusCode >= 300) {
-    throw Exception('Não foi possível carregar a empresa.');
-  }
-
-  final json = jsonDecode(utf8.decode(resposta.bodyBytes));
-
-  if (json is! List) {
-    throw const FormatException('Resposta de corretores inválida.');
-  }
-
-  for (final item in json) {
-    if (item is! Map) continue;
-
-    final corretor = CorretorPublico.fromJson(
-      Map<String, dynamic>.from(item),
-    );
-
-    if (corretor.empresa?.id == empresaId) {
-      return corretor.empresa!;
+    final resposta = await _api.get('/corretor');
+    final json = jsonDecode(utf8.decode(resposta.bodyBytes));
+    if (json is! List) {
+      throw const FormatException('Resposta de corretores inválida.');
     }
-  }
 
-  throw const PerfilNaoDisponivelException();
-}
+    for (final item in json.whereType<Map>()) {
+      final corretor = CorretorPublico.fromJson(
+        Map<String, dynamic>.from(item),
+      );
+      if (corretor.empresa?.id == empresaId) return corretor.empresa!;
+    }
+
+    throw const PerfilNaoDisponivelException();
+  }
 }
