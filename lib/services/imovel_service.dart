@@ -52,12 +52,13 @@ class ImovelServiceApi implements ImovelService {
         final data = jsonDecode(response.body);
         _token = data['token'] as String?;
         return _token;
-      } else {
-        debugPrint('Erro no login da API (${response.statusCode}): ${response.body}');
       }
+
+      debugPrint('Erro no login da API (${response.statusCode}): ${response.body}');
     } catch (e) {
       debugPrint('Falha ao autenticar com a API em $baseUrl: $e');
     }
+
     return null;
   }
 
