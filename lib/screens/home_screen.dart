@@ -1,23 +1,19 @@
 import 'package:flutter/material.dart';
-import '../models/filtros_vitrine.dart';
 import '../models/imovel.dart';
-import '../services/imovel_service.dart';
-import '../services/api_client.dart';
-import '../services/auth_session.dart';
 import '../services/favoritos_service.dart';
+import '../services/imovel_service.dart';
 import '../widgets/imovel_card.dart';
-import 'filtros_vitrine_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
-  final bool temaEscuro;
-  final Future<void> Function(bool) onTemaAlterado;
-  final FavoritosService favoritosService;
+  final bool? temaEscuro;
+  final ValueChanged<bool>? onTemaAlterado;
+  final FavoritosService? favoritosService;
 
   const HomeScreen({
     super.key,
-    required this.temaEscuro,
-    required this.favoritosService,
-    required this.onTemaAlterado,
+    this.temaEscuro,
+    this.onTemaAlterado,
+    this.favoritosService,
   });
 
   @override
@@ -28,17 +24,13 @@ class _HomeScreenState extends State<HomeScreen> {
   final ImovelService _service = ImovelServiceApi();
   final ScrollController _scrollController = ScrollController();
 
-  String cidadeAtual = '';
+  String cidadeAtual = 'São Paulo';
   String termoBusca = '';
   TipoOrdenacao ordenacaoSelecionada = TipoOrdenacao.maisRecentes;
-  FiltrosVitrine filtrosVitrine = const FiltrosVitrine();
 
   List<Imovel> listaImoveis = [];
   bool carregando = false;
   int paginaAtual = 1;
-  int totalResultados = 0;
-  String? erroCarregamento;
-  bool _requerAutenticacao = false;
 
   @override
   void initState() {
@@ -49,7 +41,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _aoRolarATela() {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
-      // Gatilho para carregar próximas páginas ao rolar
       _carregarMaisImoveis();
     }
   }
@@ -58,161 +49,67 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       carregando = true;
       paginaAtual = 1;
-      erroCarregamento = null;
-      _requerAutenticacao = false;
     });
 
-    try {
-      final resultados = await _service.getImoveis(
-        cidade: cidadeAtual,
-        busca: termoBusca,
-        ordenacao: ordenacaoSelecionada,
-        filtros: filtrosVitrine,
-        pagina: paginaAtual,
-      );
-
-      if (!mounted) return;
-
-      setState(() {
-        listaImoveis = resultados.imoveis;
-        totalResultados = resultados.total;
-        carregando = false;
-      });
-    } catch (erro) {
-      if (!mounted) return;
-
-      setState(() {
-        listaImoveis = [];
-        totalResultados = 0;
-        erroCarregamento = erro is ApiException
-            ? erro.mensagem
-            : 'A resposta da API não pôde ser interpretada.';
-        _requerAutenticacao = erro is ApiAuthenticationException;
-        carregando = false;
-      });
-    }
-  }
-
-  Future<void> _abrirAcessoCorretor() async {
-    if (AuthSession.instance.autenticado) {
-      await Navigator.pushNamed(context, '/acervo-corretor');
-      if (!mounted) return;
-      setState(() {});
-      _carregarImoveis();
-      return;
-    }
-
-    final alterouSessao = await Navigator.pushNamed(context, '/login');
-    if (!mounted) return;
-    setState(() {});
-    if (alterouSessao == true) {
-      _carregarImoveis();
-      await Navigator.pushNamed(context, '/acervo-corretor');
-      if (mounted) setState(() {});
-    }
-  }
-
-  Future<void> _abrirFiltros() async {
-    final filtrosSelecionados = await showModalBottomSheet<FiltrosVitrine>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => FiltrosVitrineSheet(
-        filtrosIniciais: filtrosVitrine,
-      ),
+    final resultados = await _service.getImoveis(
+      cidade: cidadeAtual,
+      busca: termoBusca,
+      ordenacao: ordenacaoSelecionada,
+      pagina: paginaAtual,
     );
 
-    if (filtrosSelecionados == null || !mounted) return;
-
     setState(() {
-      filtrosVitrine = filtrosSelecionados;
+      listaImoveis = resultados;
+      carregando = false;
     });
-
-    _carregarImoveis();
   }
 
   Future<void> _carregarMaisImoveis() async {
     if (carregando) return;
-    // Lógica para incremental paging
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Theme.of(context).colorScheme.surface,
         title: GestureDetector(
           onTap: () async {
-              final novaCidade = await Navigator.pushNamed(
-                context,
-                '/selecionar-cidade',
-              );
-
-              if (novaCidade != null && novaCidade is String) {
-                setState(() {
-                  cidadeAtual = novaCidade;
-                });
-                _carregarImoveis();
-              }
-            },
+            final novaCidade = await Navigator.pushNamed(context, '/selecionar-cidade');
+            if (novaCidade != null && novaCidade is String) {
+              if (!mounted) return;
+              setState(() {
+                cidadeAtual = novaCidade;
+              });
+              _carregarImoveis();
+            }
+          },
           child: Row(
             children: [
               const Icon(Icons.location_on, color: Colors.redAccent, size: 22),
               const SizedBox(width: 6),
               Text(
-                cidadeAtual.isEmpty ? 'Selecione uma cidade' : cidadeAtual,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
+                cidadeAtual,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
               ),
-              Icon(
-                Icons.keyboard_arrow_down,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+              const Icon(Icons.keyboard_arrow_down),
             ],
           ),
         ),
-          actions: [
-            IconButton(
-              tooltip: 'Meus favoritos',
-              icon: const Icon(Icons.favorite_border),
-              onPressed: () {
-                Navigator.pushNamed(context, '/favoritos');
-              },
-            ),
-            IconButton(
-              tooltip: AuthSession.instance.autenticado
-                  ? 'Conta do corretor'
-                  : 'Entrar como corretor',
-              icon: Icon(
-                AuthSession.instance.autenticado
-                    ? Icons.account_circle
-                    : Icons.login,
-              ),
-              onPressed: _abrirAcessoCorretor,
-            ),
-            IconButton(
-              tooltip: widget.temaEscuro
-                  ? 'Ativar tema claro'
-                  : 'Ativar tema escuro',
-              icon: Icon(
-                widget.temaEscuro ? Icons.light_mode : Icons.dark_mode,
-              ),
-              onPressed: () {
-                widget.onTemaAlterado(!widget.temaEscuro);
-              },
-            ),
-          ],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.favorite),
+            onPressed: () {
+              Navigator.pushNamed(context, '/favoritos');
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
           // Barra de Pesquisa e Ordenação
           Container(
-            color: Theme.of(context).colorScheme.surface,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Column(
               children: [
@@ -225,7 +122,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     hintText: 'Buscar por título ou bairro...',
                     prefixIcon: const Icon(Icons.search),
                     filled: true,
-                    fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                     contentPadding: const EdgeInsets.symmetric(vertical: 0),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -234,18 +130,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton.icon(
-                    onPressed: _abrirFiltros,
-                    icon: const Icon(Icons.tune),
-                    label: Text(
-                      filtrosVitrine.estaVazio
-                          ? 'Filtros'
-                          : 'Filtros aplicados',
-                    ),
-                  ),
-                ),
                 // Chips de Ordenação
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -262,85 +146,38 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '$totalResultados '
-                '${totalResultados == 1 ? 'imóvel encontrado' : 'imóveis encontrados'}',
-              ),
-            ),
-          ),
-
           // Lista da Vitrine
           Expanded(
             child: carregando
                 ? const Center(child: CircularProgressIndicator())
-                : erroCarregamento != null
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(erroCarregamento!),
-                            const SizedBox(height: 12),
-                            if (_requerAutenticacao)
-                              FilledButton.tonal(
-                                onPressed: _abrirAcessoCorretor,
-                                child: Text(
-                                  AuthSession.instance.autenticado
-                                      ? 'Entrar com outra conta'
-                                      : 'Entrar como corretor',
-                                ),
-                              ),
-                            const SizedBox(height: 8),
-                            FilledButton(
-                              onPressed: _carregarImoveis,
-                              child: const Text('Tentar novamente'),
-                            ),
-                          ],
-                        ),
-                      )
-                    : listaImoveis.isEmpty
-                        ? const Center(
-                            child: Text(
-                              'Nada encontrado. Tente alterar ou limpar os filtros.',
-                            ),
-                          )
-                        : ListView.builder(
-                            controller: _scrollController,
-                            padding: const EdgeInsets.all(16),
-                            itemCount: listaImoveis.length,
-                            itemBuilder: (context, index) {
-                              final imovel = listaImoveis[index];
-
-                              return ValueListenableBuilder<List<Imovel>>(
-                                valueListenable:
-                                    widget.favoritosService.favoritos,
-                                builder: (context, favoritos, _) {
-                                  final isFavorito = favoritos.any(
-                                    (favorito) => favorito.id == imovel.id,
-                                  );
-
-                                  return ImovelCard(
-                                    imovel: imovel,
-                                    isFavorito: isFavorito,
-                                    onAlternarFavorito: () {
-                                      widget.favoritosService
-                                          .alternar(imovel);
-                                    },
-                                    onTap: () {
-                                      Navigator.pushNamed(
-                                        context,
-                                        '/detalhes-imovel',
-                                        arguments: imovel,
-                                      );
-                                    },
-                                  );
-                                },
+                : listaImoveis.isEmpty
+                    ? const Center(child: Text('Nenhum imóvel encontrado.'))
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: listaImoveis.length,
+                        itemBuilder: (context, index) {
+                          final imovel = listaImoveis[index];
+                          final isFav = widget.favoritosService?.favoritos.value
+                                  .any((item) => item.id == imovel.id) ??
+                              false;
+                          return ImovelCard(
+                            imovel: imovel,
+                            isFavorito: isFav,
+                            onAlternarFavorito: () {
+                              widget.favoritosService?.alternar(imovel);
+                              setState(() {});
+                            },
+                            onTap: () {
+                              Navigator.pushNamed(
+                                context,
+                                '/detalhes-imovel',
+                                arguments: imovel,
                               );
                             },
-                          ),
+                          );
+                        },
+                      ),
           ),
         ],
       ),
@@ -364,9 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         selectedColor: Theme.of(context).primaryColor,
         labelStyle: TextStyle(
-          color: selecionado
-              ? Theme.of(context).colorScheme.onPrimary
-              : Theme.of(context).colorScheme.onSurface,
+          color: selecionado ? Colors.white : Theme.of(context).colorScheme.onSurface,
           fontSize: 12,
         ),
       ),

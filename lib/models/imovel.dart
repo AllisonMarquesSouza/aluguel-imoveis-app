@@ -1,4 +1,3 @@
-import '../services/api_client.dart';
 import 'imovel_enums.dart';
 
 class Imovel {
@@ -19,13 +18,14 @@ class Imovel {
   final List<String> caracteristicas;
   final Map<String, dynamic> detalhes;
   final String imagemUrl;
-  final NaturezaImovel? natureza;
+  final NaturezaImovel natureza;
   final FinalidadeImovel finalidade;
-  final DateTime? dataCriacao;
   final SituacaoImovel? situacao;
-  final int? corretorId;
-  final int? empresaId;
+  final DateTime dataCriacao;
+
   final String corretorNome;
+  final String corretorTelefone;
+  final String corretorEmail;
 
   const Imovel({
     required this.id,
@@ -34,184 +34,165 @@ class Imovel {
     required this.cidade,
     required this.bairro,
     required this.preco,
-    this.valorVenda,
-    this.valorAluguel,
-    this.valorCondominio,
-    this.valorIptu,
     this.areaM2,
     this.quartos,
-    this.suites,
-    this.vagas,
-    this.caracteristicas = const [],
-    this.detalhes = const {},
     required this.imagemUrl,
-    this.natureza,
-    this.finalidade = FinalidadeImovel.venda,
-    this.dataCriacao,
+    this.natureza = NaturezaImovel.apartamento,
+    this.finalidade = FinalidadeImovel.aluguel,
     this.situacao,
-    this.corretorId,
-    this.empresaId,
-    this.corretorNome = '',
+    required this.dataCriacao,
+    this.corretorNome = 'Carlos Silva',
+    this.corretorTelefone = '5511999999999',
+    this.corretorEmail = 'carlos.corretor@email.com',
   });
 
-  Imovel copyWith({SituacaoImovel? situacao}) => Imovel(
-        id: id,
-        codigo: codigo,
-        titulo: titulo,
-        cidade: cidade,
-        bairro: bairro,
-        preco: preco,
-        valorVenda: valorVenda,
-        valorAluguel: valorAluguel,
-        valorCondominio: valorCondominio,
-        valorIptu: valorIptu,
-        areaM2: areaM2,
-        quartos: quartos,
-        suites: suites,
-        vagas: vagas,
-        caracteristicas: caracteristicas,
-        detalhes: detalhes,
-        imagemUrl: imagemUrl,
-        natureza: natureza,
-        finalidade: finalidade,
-        dataCriacao: dataCriacao,
-        situacao: situacao ?? this.situacao,
-        corretorId: corretorId,
-        empresaId: empresaId,
-        corretorNome: corretorNome,
-      );
-
-  factory Imovel.fromJson(Map<String, dynamic> json) {
-    final endereco = _map(json['endereco']);
-    final casa = _map(json['casa']);
-    final terreno = _map(json['terreno']);
-    final finalidade = _lerFinalidade(json['finalidade']);
-    final precoSalvo = _number(json['preco']);
-    final valorVenda = _number(json['valorVenda']) ??
-        (finalidade == FinalidadeImovel.aluguel ? null : precoSalvo);
-    final valorAluguel = _number(json['valorAluguel']) ??
-        (finalidade == FinalidadeImovel.venda ? null : precoSalvo);
-    final area = _number(casa['areaConstruida']) ??
-        _number(casa['areaTerreno']) ??
-        _number(terreno['areaTotal']) ??
-        _number(json['areaM2']);
-    final foto = _fotoCapa(json['fotos']);
-    final urlImagem = foto?['url']?.toString() ?? json['imagemUrl']?.toString() ?? '';
-
+  Imovel copyWith({
+    String? id,
+    String? codigo,
+    String? titulo,
+    String? cidade,
+    String? bairro,
+    double? preco,
+    double? areaM2,
+    int? quartos,
+    String? imagemUrl,
+    NaturezaImovel? natureza,
+    FinalidadeImovel? finalidade,
+    SituacaoImovel? situacao,
+    DateTime? dataCriacao,
+    String? corretorNome,
+    String? corretorTelefone,
+    String? corretorEmail,
+  }) {
     return Imovel(
-      id: json['id'].toString(),
-      codigo: json['codigo']?.toString() ?? '',
-      titulo: json['titulo']?.toString() ?? '',
-      cidade: (endereco['cidade'] ?? json['cidade'] ?? '').toString(),
-      bairro: (endereco['bairro'] ?? json['bairro'] ?? '').toString(),
-      preco: finalidade == FinalidadeImovel.aluguel
-          ? valorAluguel ?? 0
-          : valorVenda ?? valorAluguel ?? 0,
-      valorVenda: valorVenda,
-      valorAluguel: valorAluguel,
-      valorCondominio: _number(json['valorCondominio']),
-      valorIptu: _number(json['valorIptu']),
-      areaM2: area,
-      quartos: (casa['quartos'] as num?)?.toInt(),
-      suites: (casa['suites'] as num?)?.toInt(),
-      vagas: (casa['vagas'] as num?)?.toInt(),
-      caracteristicas: (json['caracteristicas'] as List? ?? const [])
-          .map((item) => item is Map ? item['nome']?.toString() ?? '' : item.toString())
-          .where((nome) => nome.isNotEmpty)
-          .toList(growable: false),
-      detalhes: casa.isNotEmpty
-          ? casa
-          : terreno.isNotEmpty
-              ? terreno
-              : _map(json['detalhes']),
-      imagemUrl: urlImagem.isEmpty ? '' : ApiClient.resolverUrl(urlImagem).toString(),
-      natureza: _lerNatureza(json['natureza']),
-      finalidade: finalidade,
-      dataCriacao: _date(json['criadoEm'] ?? json['dataCriacao']),
-      situacao: _lerSituacao(json['situacao']),
-      corretorId: (json['corretorId'] as num?)?.toInt(),
-      empresaId: (json['empresaId'] as num?)?.toInt(),
-      corretorNome: json['nomeCorretor']?.toString() ?? '',
+      id: id ?? this.id,
+      codigo: codigo ?? this.codigo,
+      titulo: titulo ?? this.titulo,
+      cidade: cidade ?? this.cidade,
+      bairro: bairro ?? this.bairro,
+      preco: preco ?? this.preco,
+      areaM2: areaM2 ?? this.areaM2,
+      quartos: quartos ?? this.quartos,
+      imagemUrl: imagemUrl ?? this.imagemUrl,
+      natureza: natureza ?? this.natureza,
+      finalidade: finalidade ?? this.finalidade,
+      situacao: situacao ?? this.situacao,
+      dataCriacao: dataCriacao ?? this.dataCriacao,
+      corretorNome: corretorNome ?? this.corretorNome,
+      corretorTelefone: corretorTelefone ?? this.corretorTelefone,
+      corretorEmail: corretorEmail ?? this.corretorEmail,
     );
   }
 
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'codigo': codigo,
-        'titulo': titulo,
-        'cidade': cidade,
-        'bairro': bairro,
-        'preco': preco,
-        'valorVenda': valorVenda,
-        'valorAluguel': valorAluguel,
-        'valorCondominio': valorCondominio,
-        'valorIptu': valorIptu,
-        'areaM2': areaM2,
-        'quartos': quartos,
-        'suites': suites,
-        'vagas': vagas,
-        'caracteristicas': caracteristicas,
-        'detalhes': detalhes,
-        'imagemUrl': imagemUrl,
-        'natureza': natureza?.name,
-        'finalidade': finalidade.name,
-        'dataCriacao': dataCriacao?.toIso8601String(),
-        'situacao': situacao?.name,
-        'corretorId': corretorId,
-        'empresaId': empresaId,
-        'corretorNome': corretorNome,
-      };
-}
-
-Map<String, dynamic> _map(dynamic value) =>
-    value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
-
-double? _number(dynamic value) => value is num ? value.toDouble() : null;
-
-Map<String, dynamic>? _fotoCapa(dynamic value) {
-  if (value is! List || value.isEmpty) return null;
-  for (final item in value) {
-    if (item is Map && item['capa'] == true) return Map<String, dynamic>.from(item);
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'codigo': codigo,
+      'titulo': titulo,
+      'cidade': cidade,
+      'bairro': bairro,
+      'preco': preco,
+      'areaM2': areaM2,
+      'quartos': quartos,
+      'imagemUrl': imagemUrl,
+      'natureza': natureza.name,
+      'finalidade': finalidade.name,
+      'situacao': situacao?.name,
+      'dataCriacao': dataCriacao.toIso8601String(),
+      'corretorNome': corretorNome,
+      'corretorTelefone': corretorTelefone,
+      'corretorEmail': corretorEmail,
+    };
   }
-  return value.first is Map ? Map<String, dynamic>.from(value.first as Map) : null;
-}
 
-FinalidadeImovel _lerFinalidade(dynamic value) {
-  final nome = value?.toString().toUpperCase().replaceAll('_', '');
-  switch (nome) {
-    case 'VENDA':
-      return FinalidadeImovel.venda;
-    case 'ALUGUEL':
-      return FinalidadeImovel.aluguel;
-    case 'VENDAEALUGUEL':
-      return FinalidadeImovel.vendaEAluguel;
-    default:
-      throw FormatException('Finalidade de imóvel inválida: $value');
+  factory Imovel.fromJson(
+    Map<String, dynamic> json, {
+    String baseUrl = 'http://localhost:8080',
+  }) {
+    final idStr = json['id']?.toString() ?? '1';
+    final codigoStr = json['codigo']?.toString() ?? 'IMO-$idStr';
+
+    String cidadeNome = 'São Paulo';
+    String bairroNome = 'Centro';
+
+    final endereco = json['endereco'];
+    if (endereco is Map) {
+      cidadeNome = (endereco['cidade'] ?? json['cidade'] ?? cidadeNome).toString();
+      bairroNome = (endereco['bairro'] ?? json['bairro'] ?? bairroNome).toString();
+    } else {
+      cidadeNome = (json['cidade'] ?? cidadeNome).toString();
+      bairroNome = (json['bairro'] ?? bairroNome).toString();
+    }
+
+    final finalidadeRaw = json['finalidade']?.toString().toLowerCase();
+    FinalidadeImovel fin = FinalidadeImovel.aluguel;
+    if (finalidadeRaw == 'venda') {
+      fin = FinalidadeImovel.venda;
+    }
+
+    final naturezaRaw = json['natureza']?.toString().toLowerCase();
+    NaturezaImovel nat = NaturezaImovel.apartamento;
+    if (naturezaRaw == 'casa') nat = NaturezaImovel.casa;
+    if (naturezaRaw == 'terreno') nat = NaturezaImovel.terreno;
+    if (naturezaRaw == 'lote') nat = NaturezaImovel.lote;
+
+    double precoVal = ((json['valorAluguel'] as num?) ??
+            (json['valorVenda'] as num?) ??
+            (json['preco'] as num?) ??
+            0)
+        .toDouble();
+
+    String imgUrl = 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800';
+    final fotos = json['fotos'];
+    if (fotos is List && fotos.isNotEmpty) {
+      final fotoCapa = fotos.firstWhere(
+        (f) => f is Map && f['capa'] == true,
+        orElse: () => fotos.first,
+      );
+
+      if (fotoCapa is Map && fotoCapa['url'] != null) {
+        final rawUrl = fotoCapa['url'].toString();
+        imgUrl = rawUrl.startsWith('http') ? rawUrl : '$baseUrl$rawUrl';
+      }
+    } else if (json['imagemUrl'] != null && json['imagemUrl'].toString().isNotEmpty) {
+      final rawUrl = json['imagemUrl'].toString();
+      imgUrl = rawUrl.startsWith('http') ? rawUrl : '$baseUrl$rawUrl';
+    }
+
+    DateTime dt = DateTime.now();
+    if (json['criadoEm'] != null) {
+      dt = DateTime.tryParse(json['criadoEm'].toString()) ?? dt;
+    } else if (json['dataCriacao'] != null) {
+      dt = DateTime.tryParse(json['dataCriacao'].toString()) ?? dt;
+    }
+
+    SituacaoImovel? sit;
+    if (json['situacao'] != null) {
+      final s = json['situacao'].toString().toLowerCase();
+      for (final v in SituacaoImovel.values) {
+        if (v.name == s) sit = v;
+      }
+    }
+
+    return Imovel(
+      id: idStr,
+      codigo: codigoStr,
+      titulo: json['titulo']?.toString() ?? 'Imóvel sem título',
+      cidade: cidadeNome,
+      bairro: bairroNome,
+      preco: precoVal,
+      areaM2: (json['areaM2'] as num?)?.toDouble(),
+      quartos: (json['quartos'] as num?)?.toInt(),
+      imagemUrl: imgUrl,
+      natureza: nat,
+      finalidade: fin,
+      situacao: sit,
+      dataCriacao: dt,
+      corretorNome: json['nomeCorretor']?.toString() ??
+          json['corretorNome']?.toString() ??
+          'Carlos Silva',
+      corretorTelefone: json['corretorTelefone']?.toString() ?? '5511999999999',
+      corretorEmail: json['corretorEmail']?.toString() ?? 'corretor@imobiliaria.com',
+    );
   }
-}
-
-NaturezaImovel? _lerNatureza(dynamic value) {
-  switch (value?.toString().toUpperCase()) {
-    case 'CASA':
-      return NaturezaImovel.casa;
-    case 'APARTAMENTO':
-      return NaturezaImovel.apartamento;
-    case 'TERRENO':
-      return NaturezaImovel.terreno;
-    case 'LOTE':
-      return NaturezaImovel.lote;
-    default:
-      return null;
-  }
-}
-
-DateTime? _date(dynamic value) =>
-    value == null ? null : DateTime.tryParse(value.toString());
-
-SituacaoImovel? _lerSituacao(dynamic value) {
-  if (value == null) return null;
-  for (final item in SituacaoImovel.values) {
-    if (item.name.toUpperCase() == value.toString().toUpperCase()) return item;
-  }
-  return null;
 }
