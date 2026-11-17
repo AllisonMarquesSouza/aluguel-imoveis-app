@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/perfil_publico.dart';
+import '../services/contato_service.dart';
 import '../services/perfil_publico_service.dart';
+import '../widgets/contato_corretor_actions.dart';
 
 class PerfilCorretorScreen extends StatefulWidget {
   final int corretorId;
@@ -29,46 +31,6 @@ class _PerfilCorretorScreenState extends State<PerfilCorretorScreen> {
 
   void _carregar() {
     _perfilFuture = _service.buscarCorretor(widget.corretorId);
-  }
-
-  Future<void> _abrir(Uri uri) async {
-    final abriu = await launchUrl(
-      uri,
-      mode: LaunchMode.externalApplication,
-    );
-
-    if (!abriu && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Não foi possível abrir o contato.'),
-        ),
-      );
-    }
-  }
-
-  Widget _contato(String rotulo, String? valor, IconData icone, Uri? uri) {
-    if (valor == null || valor.trim().isEmpty || uri == null) {
-      return const SizedBox.shrink();
-    }
-
-    return ListTile(
-      leading: Icon(icone),
-      title: Text(rotulo),
-      subtitle: Text(valor),
-      onTap: () => _abrir(uri),
-    );
-  }
-
-  Uri? _telefoneUri(String? telefone) {
-    if (telefone == null) return null;
-    final numero = telefone.replaceAll(RegExp(r'[^0-9+]'), '');
-    return numero.isEmpty ? null : Uri(scheme: 'tel', path: numero);
-  }
-
-  Uri? _whatsappUri(String? whatsapp) {
-    if (whatsapp == null) return null;
-    final numero = whatsapp.replaceAll(RegExp(r'[^0-9]'), '');
-    return numero.isEmpty ? null : Uri.https('wa.me', '/$numero');
   }
 
   @override
@@ -143,25 +105,12 @@ class _PerfilCorretorScreenState extends State<PerfilCorretorScreen> {
                 Text(corretor.apresentacao!),
               ],
               const SizedBox(height: 12),
-              _contato(
-                'WhatsApp',
-                corretor.whatsapp,
-                Icons.chat,
-                _whatsappUri(corretor.whatsapp),
-              ),
-              _contato(
-                'Telefone',
-                corretor.telefone,
-                Icons.phone,
-                _telefoneUri(corretor.telefone),
-              ),
-              _contato(
-                'E-mail',
-                corretor.email,
-                Icons.email,
-                corretor.email == null
-                    ? null
-                    : Uri(scheme: 'mailto', path: corretor.email),
+              ContatoCorretorActions(
+                onRegistrarContato: (canal) =>
+                    ContatoService().registrarNoPerfilDoCorretor(
+                  corretorId: corretor.id.toString(),
+                  canal: canal,
+                ),
               ),
               if (corretor.empresa != null)
                 Card(

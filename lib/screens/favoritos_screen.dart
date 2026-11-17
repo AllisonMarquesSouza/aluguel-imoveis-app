@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/imovel.dart';
 import '../models/imovel_enums.dart';
 import '../services/favoritos_service.dart';
+import '../services/imovel_detalhe_service.dart';
 import '../widgets/imovel_card.dart';
 
 class FavoritosScreen extends StatefulWidget {
@@ -18,6 +19,38 @@ class FavoritosScreen extends StatefulWidget {
 }
 
 class _FavoritosScreenState extends State<FavoritosScreen> {
+  late final ImovelDetalheService _imovelDetalheService;
+
+  @override
+  void initState() {
+    super.initState();
+    _imovelDetalheService = ImovelDetalheService();
+    _atualizarSituacaoFavoritos();
+  }
+
+  Future<void> _atualizarSituacaoFavoritos() async {
+    final favoritos = List<Imovel>.from(
+      widget.favoritosService.favoritos.value,
+    );
+
+    for (final imovel in favoritos) {
+      try {
+        final detalhe = await _imovelDetalheService.buscarPorId(imovel.id);
+        final situacao = detalhe.situacao;
+        if (situacao != null) {
+          await widget.favoritosService.atualizarSituacao(imovel.id, situacao);
+        }
+      } on ImovelIndisponivelException {
+        await widget.favoritosService.atualizarSituacao(
+          imovel.id,
+          SituacaoImovel.despublicado,
+        );
+      } catch (_) {
+        // Se a API falhar, mantém a situação salva no aparelho.
+      }
+    }
+  }
+
   String _textoSituacao(SituacaoImovel situacao) {
     switch (situacao) {
       case SituacaoImovel.vendido:

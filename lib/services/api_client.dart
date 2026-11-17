@@ -120,4 +120,44 @@ class ApiClient {
     }
   }
 
+  Future<http.Response> postJson(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    try {
+      final headers = <String, String>{
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      };
+      final token = AuthSession.instance.token;
+      if (token != null) headers['Authorization'] = 'Bearer $token';
+
+      final response = await _http
+          .post(uri(path), headers: headers, body: jsonEncode(body))
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        if (response.statusCode == 401) {
+          unawaited(AuthSession.instance.encerrar());
+        }
+        throw const ApiException('A API recusou o registro do contato.');
+      }
+      if (response.statusCode == 404) {
+        throw const ApiException('O imóvel ou corretor não foi encontrado.');
+      }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw ApiException(
+          'Não foi possível registrar o contato (HTTP ${response.statusCode}).',
+        );
+      }
+      return response;
+    } on ApiException {
+      rethrow;
+    } catch (_) {
+      throw const ApiException(
+        'Não foi possível conectar à API para registrar o contato.',
+      );
+    }
+  }
+
 }

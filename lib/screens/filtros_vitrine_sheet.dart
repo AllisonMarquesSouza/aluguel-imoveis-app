@@ -3,12 +3,10 @@ import '../models/filtros_vitrine.dart';
 
 class FiltrosVitrineSheet extends StatefulWidget {
   final FiltrosVitrine filtrosIniciais;
-  final List<String> caracteristicasDisponiveis;
 
   const FiltrosVitrineSheet({
     super.key,
     required this.filtrosIniciais,
-    required this.caracteristicasDisponiveis,
   });
 
   @override
@@ -16,6 +14,17 @@ class FiltrosVitrineSheet extends StatefulWidget {
 }
 
 class _FiltrosVitrineSheetState extends State<FiltrosVitrineSheet> {
+  static const _opcoesCaracteristicas = [
+    'Piscina',
+    'Varanda',
+    'Churrasqueira',
+    'Elevador',
+    'Academia',
+    'Portaria 24h',
+    'Mobiliado',
+    'Aceita pets',
+  ];
+
   late String? _finalidade = widget.filtrosIniciais.finalidade;
   late String? _natureza = widget.filtrosIniciais.natureza;
 
@@ -187,7 +196,7 @@ class _FiltrosVitrineSheetState extends State<FiltrosVitrineSheet> {
                     _opcoes(
                       'Natureza',
                       _natureza,
-                      ['Casa', 'Terreno'],
+                      ['Casa', 'Apartamento', 'Terreno', 'Lote'],
                       (valor) => setState(() => _natureza = valor),
                     ),
                     const SizedBox(height: 16),
@@ -255,11 +264,9 @@ class _FiltrosVitrineSheetState extends State<FiltrosVitrineSheet> {
                       'Características',
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    if (widget.caracteristicasDisponiveis.isEmpty)
-                      const Text('Nenhuma característica foi retornada pela API.'),
                     Wrap(
                       spacing: 8,
-                      children: widget.caracteristicasDisponiveis.map((opcao) {
+                      children: _opcoesCaracteristicas.map((opcao) {
                         final selecionada =
                             _caracteristicasSelecionadas.contains(opcao);
                         return FilterChip(

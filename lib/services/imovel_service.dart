@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import '../models/filtros_vitrine.dart';
 import '../models/imovel.dart';
-import '../models/imovel_enums.dart';
 import 'api_client.dart';
 
 enum TipoOrdenacao { menorPreco, maiorPreco, maiorArea, maisRecentes }
@@ -10,13 +9,8 @@ enum TipoOrdenacao { menorPreco, maiorPreco, maiorArea, maisRecentes }
 class ResultadoBuscaImoveis {
   final List<Imovel> imoveis;
   final int total;
-  final List<String> caracteristicasDisponiveis;
 
-  const ResultadoBuscaImoveis({
-    required this.imoveis,
-    required this.total,
-    this.caracteristicasDisponiveis = const [],
-  });
+  const ResultadoBuscaImoveis({required this.imoveis, required this.total});
 }
 
 abstract class ImovelService {
@@ -27,13 +21,12 @@ abstract class ImovelService {
     String? busca,
     TipoOrdenacao? ordenacao,
     FiltrosVitrine filtros = const FiltrosVitrine(),
-    bool atualizarApi = false,
+    int pagina = 1,
   });
 }
 
 class ImovelServiceApi implements ImovelService {
   final ApiClient _api;
-  List<Imovel>? _imoveisCache;
 
   ImovelServiceApi({ApiClient? apiClient}) : _api = apiClient ?? ApiClient();
 
@@ -56,28 +49,27 @@ class ImovelServiceApi implements ImovelService {
     String? busca,
     TipoOrdenacao? ordenacao,
     FiltrosVitrine filtros = const FiltrosVitrine(),
-    bool atualizarApi = false,
+    int pagina = 1,
   }) async {
-    if (_imoveisCache == null || atualizarApi) {
-      final resposta = await _api.get('/imovel');
-      final corpo = jsonDecode(utf8.decode(resposta.bodyBytes));
-      if (corpo is! List) {
-        throw const FormatException('A API retornou uma lista de imóveis inválida.');
-      }
-      _imoveisCache = corpo
-          .map((item) => Imovel.fromJson(Map<String, dynamic>.from(item as Map)))
-          .toList(growable: false);
+    final resposta = await _api.get('/imovel');
+    final corpo = jsonDecode(utf8.decode(resposta.bodyBytes));
+    if (corpo is! List) {
+      throw const FormatException('A API retornou uma lista de imóveis inválida.');
     }
 
-    final caracteristicasDisponiveis = _imoveisCache!
-        .expand((imovel) => imovel.caracteristicas)
-        .toSet()
-        .toList()
-      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
-
-    var imoveis = _imoveisCache!
+    var imoveis = corpo
+        .map((item) => Imovel.fromJson(Map<String, dynamic>.from(item as Map)))
         .where((imovel) => cidade.isEmpty || imovel.cidade.toLowerCase() == cidade.toLowerCase())
         .toList();
+
+    if (filtros.natureza != null || filtros.quartosMinimos != null ||
+        filtros.suitesMinimas != null || filtros.vagasMinimas != null ||
+        filtros.areaMinimaM2 != null || filtros.areaMaximaM2 != null ||
+        filtros.caracteristicas.isNotEmpty) {
+      throw const ApiException(
+        'A API ainda não informa todos os campos necessários para esses filtros.',
+      );
+    }
 
     final termo = busca?.trim().toLowerCase();
     if (termo != null && termo.isNotEmpty) {
@@ -87,60 +79,18 @@ class ImovelServiceApi implements ImovelService {
     }
 
     imoveis = imoveis.where((imovel) {
-      final finalidadeFiltro = filtros.finalidade?.toLowerCase();
-      final finalidadeCompativel = finalidadeFiltro == null ||
-          (finalidadeFiltro == 'venda'
-              ? imovel.finalidade != FinalidadeImovel.aluguel
-              : finalidadeFiltro == 'aluguel'
-                  ? imovel.finalidade != FinalidadeImovel.venda
-                  : imovel.finalidade.name == finalidadeFiltro);
-      if (!finalidadeCompativel) {
+      if (filtros.finalidade != null &&
+          imovel.finalidade.name != filtros.finalidade!.toLowerCase()) {
         return false;
       }
-      final precoFiltrado = finalidadeFiltro == 'aluguel'
-          ? imovel.valorAluguel
-          : finalidadeFiltro == 'venda'
-              ? imovel.valorVenda
-              : imovel.preco;
-      if (filtros.precoMinimo != null &&
-          (precoFiltrado == null || precoFiltrado < filtros.precoMinimo!)) {
+      if (filtros.precoMinimo != null && imovel.preco < filtros.precoMinimo!) {
         return false;
       }
-      if (filtros.precoMaximo != null &&
-          (precoFiltrado == null || precoFiltrado > filtros.precoMaximo!)) {
-        return false;
-      }
-      if (filtros.natureza != null &&
-          imovel.natureza?.name != filtros.natureza!.toLowerCase()) {
-        return false;
-      }
-      if (filtros.quartosMinimos != null &&
-          (imovel.quartos == null || imovel.quartos! < filtros.quartosMinimos!)) {
-        return false;
-      }
-      if (filtros.suitesMinimas != null &&
-          (imovel.suites == null || imovel.suites! < filtros.suitesMinimas!)) {
-        return false;
-      }
-      if (filtros.vagasMinimas != null &&
-          (imovel.vagas == null || imovel.vagas! < filtros.vagasMinimas!)) {
-        return false;
-      }
-      if (filtros.areaMinimaM2 != null &&
-          (imovel.areaM2 == null || imovel.areaM2! < filtros.areaMinimaM2!)) {
-        return false;
-      }
-      if (filtros.areaMaximaM2 != null &&
-          (imovel.areaM2 == null || imovel.areaM2! > filtros.areaMaximaM2!)) {
+      if (filtros.precoMaximo != null && imovel.preco > filtros.precoMaximo!) {
         return false;
       }
       if (filtros.bairro != null &&
           !imovel.bairro.toLowerCase().contains(filtros.bairro!.toLowerCase())) {
-        return false;
-      }
-      if (!filtros.caracteristicas.every((caracteristica) =>
-          imovel.caracteristicas.any((nome) =>
-              nome.toLowerCase() == caracteristica.toLowerCase()))) {
         return false;
       }
       return true;
@@ -162,10 +112,6 @@ class ImovelServiceApi implements ImovelService {
         break;
     }
 
-    return ResultadoBuscaImoveis(
-      imoveis: imoveis,
-      total: imoveis.length,
-      caracteristicasDisponiveis: caracteristicasDisponiveis,
-    );
+    return ResultadoBuscaImoveis(imoveis: imoveis, total: imoveis.length);
   }
 }

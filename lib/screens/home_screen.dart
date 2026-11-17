@@ -26,6 +26,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ImovelService _service = ImovelServiceApi();
+  final ScrollController _scrollController = ScrollController();
 
   String cidadeAtual = '';
   String termoBusca = '';
@@ -33,8 +34,8 @@ class _HomeScreenState extends State<HomeScreen> {
   FiltrosVitrine filtrosVitrine = const FiltrosVitrine();
 
   List<Imovel> listaImoveis = [];
-  List<String> _caracteristicasDisponiveis = [];
   bool carregando = false;
+  int paginaAtual = 1;
   int totalResultados = 0;
   String? erroCarregamento;
   bool _requerAutenticacao = false;
@@ -43,11 +44,20 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _carregarImoveis();
+    _scrollController.addListener(_aoRolarATela);
   }
 
-  Future<void> _carregarImoveis({bool atualizarApi = false}) async {
+  void _aoRolarATela() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      // Gatilho para carregar próximas páginas ao rolar
+      _carregarMaisImoveis();
+    }
+  }
+
+  Future<void> _carregarImoveis() async {
     setState(() {
       carregando = true;
+      paginaAtual = 1;
       erroCarregamento = null;
       _requerAutenticacao = false;
     });
@@ -58,7 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
         busca: termoBusca,
         ordenacao: ordenacaoSelecionada,
         filtros: filtrosVitrine,
-        atualizarApi: atualizarApi,
+        pagina: paginaAtual,
       );
 
       if (!mounted) return;
@@ -66,7 +76,6 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         listaImoveis = resultados.imoveis;
         totalResultados = resultados.total;
-        _caracteristicasDisponiveis = resultados.caracteristicasDisponiveis;
         carregando = false;
       });
     } catch (erro) {
@@ -84,6 +93,25 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _abrirAcessoCorretor() async {
+    if (AuthSession.instance.autenticado) {
+      await Navigator.pushNamed(context, '/acervo-corretor');
+      if (!mounted) return;
+      setState(() {});
+      _carregarImoveis();
+      return;
+    }
+
+    final alterouSessao = await Navigator.pushNamed(context, '/login');
+    if (!mounted) return;
+    setState(() {});
+    if (alterouSessao == true) {
+      _carregarImoveis();
+      await Navigator.pushNamed(context, '/acervo-corretor');
+      if (mounted) setState(() {});
+    }
+  }
+
   Future<void> _abrirFiltros() async {
     final filtrosSelecionados = await showModalBottomSheet<FiltrosVitrine>(
       context: context,
@@ -91,7 +119,6 @@ class _HomeScreenState extends State<HomeScreen> {
       useSafeArea: true,
       builder: (_) => FiltrosVitrineSheet(
         filtrosIniciais: filtrosVitrine,
-        caracteristicasDisponiveis: _caracteristicasDisponiveis,
       ),
     );
 
@@ -104,16 +131,9 @@ class _HomeScreenState extends State<HomeScreen> {
     _carregarImoveis();
   }
 
-  Future<void> _abrirAcessoCorretor() async {
-    if (AuthSession.instance.autenticado) {
-      await Navigator.pushNamed(context, '/acervo-corretor');
-      return;
-    }
-    final alterouSessao = await Navigator.pushNamed(context, '/login');
-    if (alterouSessao == true && mounted) {
-      _carregarImoveis(atualizarApi: true);
-      await Navigator.pushNamed(context, '/acervo-corretor');
-    }
+  Future<void> _carregarMaisImoveis() async {
+    if (carregando) return;
+    // Lógica para incremental paging
   }
 
   @override
@@ -141,17 +161,12 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               const Icon(Icons.location_on, color: Colors.redAccent, size: 22),
               const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  cidadeAtual.isEmpty ? 'Selecione uma cidade' : cidadeAtual,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  softWrap: false,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
+              Text(
+                cidadeAtual.isEmpty ? 'Selecione uma cidade' : cidadeAtual,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
                 ),
               ),
               Icon(
@@ -267,7 +282,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(erroCarregamento!, textAlign: TextAlign.center),
+                            Text(erroCarregamento!),
                             const SizedBox(height: 12),
                             if (_requerAutenticacao)
                               FilledButton.tonal(
@@ -280,7 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             const SizedBox(height: 8),
                             FilledButton(
-                              onPressed: () => _carregarImoveis(atualizarApi: true),
+                              onPressed: _carregarImoveis,
                               child: const Text('Tentar novamente'),
                             ),
                           ],
@@ -293,6 +308,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           )
                         : ListView.builder(
+                            controller: _scrollController,
                             padding: const EdgeInsets.all(16),
                             itemCount: listaImoveis.length,
                             itemBuilder: (context, index) {
