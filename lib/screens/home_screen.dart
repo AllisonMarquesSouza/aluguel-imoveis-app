@@ -11,7 +11,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final ImovelService _service = ImovelServiceMock();
+  final ImovelService _service = ImovelServiceApi();
   final ScrollController _scrollController = ScrollController();
 
   String cidadeAtual = 'São Paulo';

@@ -9,7 +9,7 @@ class SelecaoCidadeScreen extends StatefulWidget {
 }
 
 class _SelecaoCidadeScreenState extends State<SelecaoCidadeScreen> {
-  final ImovelService _service = ImovelServiceMock(); // Mock centralizado
+  final ImovelService _service = ImovelServiceApi();
 
   @override
   Widget build(BuildContext context) {
