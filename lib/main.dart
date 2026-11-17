@@ -5,7 +5,7 @@ import 'screens/selecao_cidade_screen.dart';
 import 'screens/detalhes_imovel_screen.dart';
 import 'screens/favoritos_screen.dart';
 import 'screens/perfil_corretor_screen.dart';
-import 'models/imovel_detalhe.dart';
+import 'screens/login_screen.dart';
 import 'services/favoritos_service.dart';
 import 'models/imovel.dart';
 
@@ -105,10 +105,16 @@ class _AppAluguelState extends State<AppAluguel> {
               favoritosService: widget.favoritosService,
             ),
         '/perfil-corretor': (context) {
-          final corretor =
-              ModalRoute.of(context)!.settings.arguments as CorretorResumo;
-          return PerfilCorretorScreen(corretor: corretor);
+          final corretorId =
+              ModalRoute.of(context)!.settings.arguments as int;
+          return PerfilCorretorScreen(corretorId: corretorId);
         },
+        '/perfil-empresa': (context) {
+          final empresaId =
+              ModalRoute.of(context)!.settings.arguments as int;
+          return PerfilEmpresaPorIdScreen(empresaId: empresaId);
+        },
+        '/login': (context) => const LoginScreen(),
       },
     );
   }

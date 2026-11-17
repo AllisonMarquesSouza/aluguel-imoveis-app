@@ -3,6 +3,7 @@ import '../models/filtros_vitrine.dart';
 import '../models/imovel.dart';
 import '../services/imovel_service.dart';
 import '../services/api_client.dart';
+import '../services/auth_session.dart';
 import '../services/favoritos_service.dart';
 import '../widgets/imovel_card.dart';
 import 'filtros_vitrine_sheet.dart';
@@ -37,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int paginaAtual = 1;
   int totalResultados = 0;
   String? erroCarregamento;
+  bool _requerAutenticacao = false;
 
   @override
   void initState() {
@@ -57,6 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
       carregando = true;
       paginaAtual = 1;
       erroCarregamento = null;
+      _requerAutenticacao = false;
     });
 
     try {
@@ -84,11 +87,18 @@ class _HomeScreenState extends State<HomeScreen> {
         erroCarregamento = erro is ApiException
             ? erro.mensagem
             : 'A resposta da API não pôde ser interpretada.';
+        _requerAutenticacao = erro is ApiAuthenticationException;
         carregando = false;
       });
     }
   }
-  
+
+  Future<void> _abrirAcessoCorretor() async {
+    final alterouSessao = await Navigator.pushNamed(context, '/login');
+    if (!mounted) return;
+    setState(() {});
+    if (alterouSessao == true) _carregarImoveis();
+  }
 
   Future<void> _abrirFiltros() async {
     final filtrosSelecionados = await showModalBottomSheet<FiltrosVitrine>(
@@ -161,6 +171,17 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () {
                 Navigator.pushNamed(context, '/favoritos');
               },
+            ),
+            IconButton(
+              tooltip: AuthSession.instance.autenticado
+                  ? 'Conta do corretor'
+                  : 'Entrar como corretor',
+              icon: Icon(
+                AuthSession.instance.autenticado
+                    ? Icons.account_circle
+                    : Icons.login,
+              ),
+              onPressed: _abrirAcessoCorretor,
             ),
             IconButton(
               tooltip: widget.temaEscuro
@@ -251,6 +272,16 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             Text(erroCarregamento!),
                             const SizedBox(height: 12),
+                            if (_requerAutenticacao)
+                              FilledButton.tonal(
+                                onPressed: _abrirAcessoCorretor,
+                                child: Text(
+                                  AuthSession.instance.autenticado
+                                      ? 'Entrar com outra conta'
+                                      : 'Entrar como corretor',
+                                ),
+                              ),
+                            const SizedBox(height: 8),
                             FilledButton(
                               onPressed: _carregarImoveis,
                               child: const Text('Tentar novamente'),

@@ -355,15 +355,30 @@ class _DetalhesImovelScreenState extends State<DetalhesImovelScreen> {
                             : Text('CRECI: ${imovel.corretor!.creci}'),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () {
+                          final corretorId =
+                              int.tryParse(imovel.corretor!.id);
+                          if (corretorId == null) return;
                           Navigator.pushNamed(
                             context,
                             '/perfil-corretor',
-                            arguments: imovel.corretor!
-                                .comImovelReferencia(imovel.id),
+                            arguments: corretorId,
                           );
                         },
                       ),
                     ],
+                    if (imovel.empresaId != null)
+                      ListTile(
+                        leading: const CircleAvatar(
+                          child: Icon(Icons.business),
+                        ),
+                        title: const Text('Perfil da empresa'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => Navigator.pushNamed(
+                          context,
+                          '/perfil-empresa',
+                          arguments: imovel.empresaId,
+                        ),
+                      ),
                   ],
                 ),
               ),
