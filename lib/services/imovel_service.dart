@@ -1,107 +1,117 @@
+import 'dart:convert';
+
+import '../models/filtros_vitrine.dart';
 import '../models/imovel.dart';
+import 'api_client.dart';
 
 enum TipoOrdenacao { menorPreco, maiorPreco, maiorArea, maisRecentes }
 
+class ResultadoBuscaImoveis {
+  final List<Imovel> imoveis;
+  final int total;
+
+  const ResultadoBuscaImoveis({required this.imoveis, required this.total});
+}
+
 abstract class ImovelService {
   Future<List<String>> getCidadesAtendidas();
-  Future<List<Imovel>> getImoveis({
+
+  Future<ResultadoBuscaImoveis> getImoveis({
     required String cidade,
     String? busca,
     TipoOrdenacao? ordenacao,
+    FiltrosVitrine filtros = const FiltrosVitrine(),
     int pagina = 1,
   });
 }
 
-class ImovelServiceMock implements ImovelService {
-  final List<String> _cidadesMock = [
-    'São Paulo',
-    'Rio de Janeiro',
-    'Curitiba',
-    'Belo Horizonte',
-  ];
+class ImovelServiceApi implements ImovelService {
+  final ApiClient _api;
 
-  final List<Imovel> _imoveisBase = [
-    Imovel(
-      id: '1',
-      titulo: 'Apartamento de Luxo com Varanda',
-      cidade: 'São Paulo',
-      bairro: 'Moema',
-      preco: 3500.0,
-      areaM2: 75.0,
-      quartos: 2,
-      imagemUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800',
-      natureza: NaturezaImovel.aluguel,
-      dataCriacao: DateTime.now().subtract(const Duration(days: 2)),
-    ),
-    Imovel(
-      id: '2',
-      titulo: 'Casa Moderna em Condomínio',
-      cidade: 'São Paulo',
-      bairro: 'Jardins',
-      preco: 850000.0,
-      areaM2: 210.0,
-      quartos: 4,
-      imagemUrl: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800',
-      natureza: NaturezaImovel.venda,
-      dataCriacao: DateTime.now().subtract(const Duration(days: 10)),
-    ),
-    Imovel(
-      id: '3',
-      titulo: 'Studio Totalmente Mobiliado',
-      cidade: 'São Paulo',
-      bairro: 'Pinheiros',
-      preco: 2200.0,
-      areaM2: 38.0,
-      quartos: 1,
-      imagemUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
-      natureza: NaturezaImovel.aluguel,
-      dataCriacao: DateTime.now().subtract(const Duration(hours: 5)),
-    ),
-  ];
+  ImovelServiceApi({ApiClient? apiClient}) : _api = apiClient ?? ApiClient();
 
   @override
   Future<List<String>> getCidadesAtendidas() async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return _cidadesMock;
+    final resposta = await _api.get('/cidade');
+    final corpo = jsonDecode(utf8.decode(resposta.bodyBytes));
+    if (corpo is! List) {
+      throw const FormatException('A API retornou uma lista de cidades inválida.');
+    }
+    return corpo
+        .map((item) => (item as Map)['nome']?.toString() ?? '')
+        .where((nome) => nome.isNotEmpty)
+        .toList(growable: false);
   }
 
   @override
-  Future<List<Imovel>> getImoveis({
+  Future<ResultadoBuscaImoveis> getImoveis({
     required String cidade,
     String? busca,
     TipoOrdenacao? ordenacao,
+    FiltrosVitrine filtros = const FiltrosVitrine(),
     int pagina = 1,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    var resultados = _imoveisBase.where((i) => i.cidade == cidade).toList();
-
-    // Filtro por texto da busca
-    if (busca != null && busca.isNotEmpty) {
-      resultados = resultados.where((i) {
-        final termo = busca.toLowerCase();
-        return i.titulo.toLowerCase().contains(termo) ||
-            i.bairro.toLowerCase().contains(termo);
-      }).toList();
+    final resposta = await _api.get('/imovel');
+    final corpo = jsonDecode(utf8.decode(resposta.bodyBytes));
+    if (corpo is! List) {
+      throw const FormatException('A API retornou uma lista de imóveis inválida.');
     }
 
-    // Ordenação
+    var imoveis = corpo
+        .map((item) => Imovel.fromJson(Map<String, dynamic>.from(item as Map)))
+        .where((imovel) => cidade.isEmpty || imovel.cidade.toLowerCase() == cidade.toLowerCase())
+        .toList();
+
+    if (filtros.natureza != null || filtros.quartosMinimos != null ||
+        filtros.suitesMinimas != null || filtros.vagasMinimas != null ||
+        filtros.areaMinimaM2 != null || filtros.areaMaximaM2 != null ||
+        filtros.caracteristicas.isNotEmpty) {
+      throw const ApiException(
+        'A API ainda não informa todos os campos necessários para esses filtros.',
+      );
+    }
+
+    final termo = busca?.trim().toLowerCase();
+    if (termo != null && termo.isNotEmpty) {
+      imoveis = imoveis.where((imovel) =>
+          imovel.titulo.toLowerCase().contains(termo) ||
+          imovel.bairro.toLowerCase().contains(termo)).toList();
+    }
+
+    imoveis = imoveis.where((imovel) {
+      if (filtros.finalidade != null &&
+          imovel.finalidade.name != filtros.finalidade!.toLowerCase()) {
+        return false;
+      }
+      if (filtros.precoMinimo != null && imovel.preco < filtros.precoMinimo!) {
+        return false;
+      }
+      if (filtros.precoMaximo != null && imovel.preco > filtros.precoMaximo!) {
+        return false;
+      }
+      if (filtros.bairro != null &&
+          !imovel.bairro.toLowerCase().contains(filtros.bairro!.toLowerCase())) {
+        return false;
+      }
+      return true;
+    }).toList();
+
     switch (ordenacao) {
       case TipoOrdenacao.menorPreco:
-        resultados.sort((a, b) => a.preco.compareTo(b.preco));
+        imoveis.sort((a, b) => a.preco.compareTo(b.preco));
         break;
       case TipoOrdenacao.maiorPreco:
-        resultados.sort((a, b) => b.preco.compareTo(a.preco));
+        imoveis.sort((a, b) => b.preco.compareTo(a.preco));
         break;
       case TipoOrdenacao.maiorArea:
-        resultados.sort((a, b) => b.areaM2.compareTo(a.areaM2));
+        imoveis.sort((a, b) => (b.areaM2 ?? 0).compareTo(a.areaM2 ?? 0));
         break;
       case TipoOrdenacao.maisRecentes:
-      default:
-        resultados.sort((a, b) => b.dataCriacao.compareTo(a.dataCriacao));
+      case null:
+        // A API não fornece data de criação; preserva-se a ordem recebida.
         break;
     }
 
-    return resultados;
+    return ResultadoBuscaImoveis(imoveis: imoveis, total: imoveis.length);
   }
 }
