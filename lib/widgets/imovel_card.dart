@@ -19,6 +19,13 @@ class ImovelCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isAluguel = imovel.finalidade == FinalidadeImovel.aluguel;
+    final finalidadeMista = imovel.finalidade == FinalidadeImovel.vendaEAluguel;
+    final textoPreco = finalidadeMista
+        ? 'Venda: R\$ ${(imovel.valorVenda ?? 0).toStringAsFixed(0)}\n'
+            'Aluguel: R\$ ${(imovel.valorAluguel ?? 0).toStringAsFixed(0)}/mês'
+        : isAluguel
+            ? 'R\$ ${imovel.preco.toStringAsFixed(0)} /mês'
+            : 'R\$ ${imovel.preco.toStringAsFixed(0)}';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -74,7 +81,11 @@ class ImovelCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        isAluguel ? 'ALUGUEL' : 'VENDA',
+                        finalidadeMista
+                            ? 'VENDA E ALUGUEL'
+                            : isAluguel
+                                ? 'ALUGUEL'
+                                : 'VENDA',
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -137,9 +148,7 @@ class ImovelCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          isAluguel
-                              ? 'R\$ ${imovel.preco.toStringAsFixed(0)} /mês'
-                              : 'R\$ ${imovel.preco.toStringAsFixed(0)}',
+                          textoPreco,
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,

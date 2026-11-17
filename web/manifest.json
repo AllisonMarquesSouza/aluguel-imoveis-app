@@ -1,6 +1,6 @@
 {
-    "name": "aluguel_imoveis_app",
-    "short_name": "aluguel_imoveis_app",
+    "name": "AchaCasa",
+    "short_name": "AchaCasa",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

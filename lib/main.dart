@@ -5,8 +5,10 @@ import 'screens/selecao_cidade_screen.dart';
 import 'screens/detalhes_imovel_screen.dart';
 import 'screens/favoritos_screen.dart';
 import 'screens/perfil_corretor_screen.dart';
-import 'models/imovel_detalhe.dart';
+import 'screens/login_screen.dart';
 import 'services/favoritos_service.dart';
+import 'services/auth_session.dart';
+import 'screens/acervo_corretor_screen.dart';
 import 'models/imovel.dart';
 
 const String _chaveTemaEscuro = 'tema_escuro';
@@ -15,6 +17,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final preferencias = SharedPreferencesAsync();
+  await AuthSession.instance.restaurar(preferencias);
   final temaEscuroInicial =
       await preferencias.getBool(_chaveTemaEscuro) ?? false;
   final favoritosService = FavoritosService(preferencias);
@@ -105,10 +108,17 @@ class _AppAluguelState extends State<AppAluguel> {
               favoritosService: widget.favoritosService,
             ),
         '/perfil-corretor': (context) {
-          final corretor =
-              ModalRoute.of(context)!.settings.arguments as CorretorResumo;
-          return PerfilCorretorScreen(corretor: corretor);
+          final corretorId =
+              ModalRoute.of(context)!.settings.arguments as int;
+          return PerfilCorretorScreen(corretorId: corretorId);
         },
+        '/perfil-empresa': (context) {
+          final empresaId =
+              ModalRoute.of(context)!.settings.arguments as int;
+          return PerfilEmpresaPorIdScreen(empresaId: empresaId);
+        },
+        '/login': (context) => const LoginScreen(),
+        '/acervo-corretor': (context) => const AcervoCorretorScreen(),
       },
     );
   }

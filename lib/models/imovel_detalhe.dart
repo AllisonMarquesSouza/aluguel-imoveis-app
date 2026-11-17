@@ -109,9 +109,9 @@ class CorretorResumo {
   factory CorretorResumo.fromJson(Map<String, dynamic> json) {
     return CorretorResumo(
       id: json['id'].toString(),
-      nome: json['nome'] as String,
-      creci: json['creci'] as String,
-      fotoUrl: json['fotoUrl'] as String,
+      nome: json['nome']?.toString() ?? '',
+      creci: json['creci']?.toString() ?? '',
+      fotoUrl: json['fotoUrl']?.toString() ?? '',
     );
   }
 
@@ -128,6 +128,7 @@ class CorretorResumo {
 
 class ImovelDetalhe {
   final String id;
+  final int? empresaId;
   final String titulo;
   final String descricao;
   final NaturezaImovel? natureza;
@@ -149,6 +150,7 @@ class ImovelDetalhe {
 
   const ImovelDetalhe({
     required this.id,
+    this.empresaId,
     required this.titulo,
     required this.descricao,
     this.natureza,
@@ -190,6 +192,7 @@ class ImovelDetalhe {
 
     return ImovelDetalhe(
       id: json['id'].toString(),
+      empresaId: (json['empresaId'] as num?)?.toInt(),
       titulo: json['titulo']?.toString() ?? '',
       descricao: json['descricao']?.toString() ?? '',
       natureza: json['natureza'] == null ? null : _lerNatureza(json['natureza'] as String),
@@ -248,6 +251,9 @@ FinalidadeImovel _lerFinalidade(String valor) {
       return FinalidadeImovel.venda;
     case 'ALUGUEL':
       return FinalidadeImovel.aluguel;
+    case 'VENDA_E_ALUGUEL':
+    case 'VENDAEALUGUEL':
+      return FinalidadeImovel.vendaEAluguel;
     default:
       throw FormatException('Finalidade desconhecida: $valor');
   }

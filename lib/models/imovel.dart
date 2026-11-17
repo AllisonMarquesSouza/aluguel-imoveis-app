@@ -7,8 +7,16 @@ class Imovel {
   final String cidade;
   final String bairro;
   final double preco;
+  final double? valorVenda;
+  final double? valorAluguel;
+  final double? valorCondominio;
+  final double? valorIptu;
   final double? areaM2;
   final int? quartos;
+  final int? suites;
+  final int? vagas;
+  final List<String> caracteristicas;
+  final Map<String, dynamic> detalhes;
   final String imagemUrl;
   final NaturezaImovel natureza;
   final FinalidadeImovel finalidade;
@@ -19,7 +27,7 @@ class Imovel {
   final String corretorTelefone;
   final String corretorEmail;
 
-  Imovel({
+  const Imovel({
     required this.id,
     this.codigo = '',
     required this.titulo,
