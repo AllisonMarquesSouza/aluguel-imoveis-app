@@ -38,4 +38,19 @@ class FiltrosVitrine {
       areaMaximaM2 == null &&
       caracteristicas.isEmpty;
 
+  Map<String, dynamic> toQueryParameters() => {
+        'finalidade': ?finalidade,
+        'natureza': ?natureza,
+        'precoMinimo': ?precoMinimo,
+        'precoMaximo': ?precoMaximo,
+        'quartosMinimos': ?quartosMinimos,
+        'suitesMinimas': ?suitesMinimas,
+        'vagasMinimas': ?vagasMinimas,
+        if (bairro != null && bairro!.trim().isNotEmpty)
+          'bairro': bairro!.trim(),
+        'areaMinimaM2': ?areaMinimaM2,
+        'areaMaximaM2': ?areaMaximaM2,
+        if (caracteristicas.isNotEmpty)
+          'caracteristicas': caracteristicas,
+      };
 }

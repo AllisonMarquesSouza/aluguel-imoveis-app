@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../services/api_client.dart';
 import '../services/imovel_service.dart';
 
 class SelecaoCidadeScreen extends StatefulWidget {
@@ -23,11 +22,6 @@ class _SelecaoCidadeScreenState extends State<SelecaoCidadeScreen> {
     setState(() => _cidadesFuture = _service.getCidadesAtendidas());
   }
 
-  Future<void> _abrirLogin() async {
-    final alterouSessao = await Navigator.pushNamed(context, '/login');
-    if (alterouSessao == true && mounted) _tentarNovamente();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -48,11 +42,6 @@ class _SelecaoCidadeScreenState extends State<SelecaoCidadeScreen> {
                   children: [
                     Text(snapshot.error.toString(), textAlign: TextAlign.center),
                     const SizedBox(height: 12),
-                    if (snapshot.error is ApiAuthenticationException)
-                      FilledButton.tonal(
-                        onPressed: _abrirLogin,
-                        child: const Text('Entrar como corretor'),
-                      ),
                     FilledButton(onPressed: _tentarNovamente, child: const Text('Tentar novamente')),
                   ],
                 ),

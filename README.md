@@ -10,6 +10,8 @@ O app autentica corretores por `POST /auth/login` e envia o JWT nas chamadas pro
 
 Durante a execução em modo debug, a tela de acesso mostra atalhos para preencher as credenciais de demonstração de corretor e administrador. Para exibi-los em uma compilação de teste, use `--dart-define=APP_TEST_MODE=true`. Essas contas só funcionam quando a API é iniciada com o perfil `demo`; a conta de administrador não tem permissão para consultar cidades e imóveis.
 
+As chamadas do app usam os caminhos documentados pela API (`/cidade`, `/imovel` e `/imovel/{id}`). No estado atual, as consultas de cidades e imóveis exigem autenticação, e imóveis não podem ser filtrados por cidade no servidor. O app mostra o erro recebido nesses casos e não substitui os dados por exemplos locais. A vitrine pública depende de endpoints públicos correspondentes na API.
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.

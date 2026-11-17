@@ -5,10 +5,10 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/imovel_detalhe.dart';
 import '../models/imovel.dart';
-import '../models/imovel_enums.dart';
 import '../services/imovel_detalhe_service.dart';
 import '../services/favoritos_service.dart';
-import '../services/api_client.dart';
+import '../services/contato_service.dart';
+import '../widgets/contato_corretor_actions.dart';
 
 class DetalhesImovelScreen extends StatefulWidget {
   final String imovelId;
@@ -84,16 +84,9 @@ class _DetalhesImovelScreenState extends State<DetalhesImovelScreen> {
       case NaturezaImovel.casa:
         titulo = 'Detalhes da casa';
         campos = const [
-          MapEntry('areaTerreno', 'Área do terreno (m²)'),
-          MapEntry('areaConstruida', 'Área construída (m²)'),
-          MapEntry('areaLivre', 'Área livre (m²)'),
-          MapEntry('quartos', 'Quartos'),
-          MapEntry('suites', 'Suítes'),
-          MapEntry('banheiros', 'Banheiros'),
-          MapEntry('salas', 'Salas'),
-          MapEntry('vagas', 'Vagas'),
-          MapEntry('pavimentos', 'Pavimentos'),
-          MapEntry('anoConstrucao', 'Ano de construção'),
+          MapEntry('areaTerrenoM2', 'Área do terreno (m²)'),
+          MapEntry('areaConstruidaM2', 'Área construída (m²)'),
+          MapEntry('areaLivreM2', 'Área livre (m²)'),
         ];
         break;
       case NaturezaImovel.apartamento:
@@ -108,15 +101,9 @@ class _DetalhesImovelScreenState extends State<DetalhesImovelScreen> {
       case NaturezaImovel.terreno:
         titulo = 'Detalhes do terreno';
         campos = const [
-          MapEntry('areaTotal', 'Área total (m²)'),
-          MapEntry('frente', 'Frente (m)'),
-          MapEntry('fundo', 'Fundo (m)'),
-          MapEntry('lateralEsquerda', 'Lateral esquerda (m)'),
-          MapEntry('lateralDireita', 'Lateral direita (m)'),
+          MapEntry('frenteM', 'Frente (m)'),
+          MapEntry('fundoM', 'Fundo (m)'),
           MapEntry('topografia', 'Topografia'),
-          MapEntry('usoPermitido', 'Uso permitido'),
-          MapEntry('muro', 'Murado'),
-          MapEntry('esquina', 'Esquina'),
         ];
         break;
       case NaturezaImovel.lote:
@@ -171,10 +158,8 @@ class _DetalhesImovelScreenState extends State<DetalhesImovelScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      snapshot.error is ApiException
-                          ? (snapshot.error as ApiException).mensagem
-                          : 'Não foi possível carregar este imóvel.',
+                    const Text(
+                      'Não foi possível carregar este imóvel.',
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 12),
@@ -182,17 +167,6 @@ class _DetalhesImovelScreenState extends State<DetalhesImovelScreen> {
                       onPressed: _tentarNovamente,
                       child: const Text('Tentar novamente'),
                     ),
-                    if (snapshot.error is ApiAuthenticationException)
-                      FilledButton.tonal(
-                        onPressed: () async {
-                          final alterouSessao =
-                              await Navigator.pushNamed(context, '/login');
-                          if (alterouSessao == true && mounted) {
-                            _tentarNovamente();
-                          }
-                        },
-                        child: const Text('Entrar como corretor'),
-                      ),
                   ],
                 ),
               ),
@@ -333,9 +307,11 @@ class _DetalhesImovelScreenState extends State<DetalhesImovelScreen> {
                     ),
                     const SizedBox(height: 8),
                     if (imovel.venda != null)
-                      Text('Venda: ${_formatarMoeda(imovel.venda!)}'),
+                      Text('Venda: ${_formatarMoeda(imovel.venda!.valor)}'),
                     if (imovel.aluguelMensal != null)
-                      Text('Aluguel: ${_formatarMoeda(imovel.aluguelMensal!)} por mês'),
+                      Text(
+                        'Aluguel: ${_formatarMoeda(imovel.aluguelMensal!)} por mês',
+                      ),
                     if (imovel.condominioMensal != null)
                       Text(
                         'Condomínio: ${_formatarMoeda(imovel.condominioMensal!)} por mês',
@@ -345,21 +321,56 @@ class _DetalhesImovelScreenState extends State<DetalhesImovelScreen> {
                         'IPTU: ${_formatarMoeda(imovel.iptuAnual!)} por ano',
                       ),
                     const SizedBox(height: 24),
-                    if (imovel.corretor != null)
-                      ListTile(
-                        leading: const CircleAvatar(child: Icon(Icons.person)),
-                        title: Text(imovel.corretor!.nome),
-                        subtitle: const Text('Ver perfil e canais de contato'),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => Navigator.pushNamed(
-                          context,
-                          '/perfil-corretor',
-                          arguments: imovel.corretor!.id,
-                        ),
+                    if (imovel.corretor != null) ...[
+                      Text(
+                        'Fale com o corretor',
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
+                      const SizedBox(height: 8),
+                      ContatoCorretorActions(
+                        onRegistrarContato: (canal) {
+                          return ContatoService().registrarNoImovel(
+                            imovelId: imovel.id,
+                            canal: canal,
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      ListTile(
+                        leading: CircleAvatar(
+                          child: ClipOval(
+                            child: Image.network(
+                              imovel.corretor!.fotoUrl,
+                              width: 48,
+                              height: 48,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(Icons.person),
+                            ),
+                          ),
+                        ),
+                        title: Text(imovel.corretor!.nome),
+                        subtitle: imovel.corretor!.creci.isEmpty
+                            ? null
+                            : Text('CRECI: ${imovel.corretor!.creci}'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          final corretorId =
+                              int.tryParse(imovel.corretor!.id);
+                          if (corretorId == null) return;
+                          Navigator.pushNamed(
+                            context,
+                            '/perfil-corretor',
+                            arguments: corretorId,
+                          );
+                        },
+                      ),
+                    ],
                     if (imovel.empresaId != null)
                       ListTile(
-                        leading: const CircleAvatar(child: Icon(Icons.business)),
+                        leading: const CircleAvatar(
+                          child: Icon(Icons.business),
+                        ),
                         title: const Text('Perfil da empresa'),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => Navigator.pushNamed(

@@ -13,13 +13,13 @@ class ImovelDetalheService {
   ImovelDetalheService({ApiClient? apiClient}) : _api = apiClient ?? ApiClient();
 
   Future<ImovelDetalhe> buscarPorId(String id) async {
-    late final dynamic corpo;
-    try {
-      final resposta = await _api.get('/imovel/${Uri.encodeComponent(id)}');
-      corpo = jsonDecode(utf8.decode(resposta.bodyBytes));
-    } on ApiNotFoundException {
+    final resposta = await _api.get('/imovel/${Uri.encodeComponent(id)}');
+
+    if (resposta.statusCode == 404) {
       throw const ImovelIndisponivelException();
     }
+
+    final corpo = jsonDecode(utf8.decode(resposta.bodyBytes));
 
     if (corpo is! Map<String, dynamic>) {
       throw const FormatException(

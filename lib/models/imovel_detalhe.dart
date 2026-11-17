@@ -1,5 +1,9 @@
+import 'imovel_enums.dart' show SituacaoImovel;
 import '../services/api_client.dart';
-import 'imovel_enums.dart';
+
+enum NaturezaImovel { casa, apartamento, terreno, lote }
+
+enum FinalidadeImovel { venda, aluguel }
 
 class LocalizacaoImovel {
   final String cidade;
@@ -16,14 +20,15 @@ class LocalizacaoImovel {
     this.longitude,
   });
 
-  factory LocalizacaoImovel.fromJson(Map<String, dynamic> json) =>
-      LocalizacaoImovel(
-        cidade: json['cidade']?.toString() ?? '',
-        uf: json['uf']?.toString() ?? '',
-        bairro: json['bairro']?.toString() ?? '',
-        latitude: _number(json['latitude']),
-        longitude: _number(json['longitude']),
-      );
+  factory LocalizacaoImovel.fromJson(Map<String, dynamic> json) {
+    return LocalizacaoImovel(
+      cidade: json['cidade']?.toString() ?? '',
+      uf: json['uf']?.toString() ?? '',
+      bairro: json['bairro']?.toString() ?? '',
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+    );
+  }
 }
 
 class FotoImovel {
@@ -31,27 +36,94 @@ class FotoImovel {
   final String url;
   final int ordem;
   final bool capa;
+  final String? descricao;
 
   const FotoImovel({
     required this.id,
     required this.url,
     required this.ordem,
     required this.capa,
+    this.descricao,
   });
+
+  factory FotoImovel.fromJson(Map<String, dynamic> json) {
+    return FotoImovel(
+      id: json['id'].toString(),
+      url: json['url'] as String,
+      ordem: json['ordem'] as int,
+      capa: json['capa'] as bool,
+      descricao: json['descricao'] as String?,
+    );
+  }
 }
 
 class CaracteristicaImovel {
   final String id;
   final String nome;
 
-  const CaracteristicaImovel({required this.id, required this.nome});
+  const CaracteristicaImovel({
+    required this.id,
+    required this.nome,
+  });
+
+  factory CaracteristicaImovel.fromJson(Map<String, dynamic> json) {
+    return CaracteristicaImovel(
+      id: json['id'].toString(),
+      nome: json['nome'] as String,
+    );
+  }
+}
+
+class PrecoVenda {
+  final double valor;
+  final String moeda;
+
+  const PrecoVenda({
+    required this.valor,
+    required this.moeda,
+  });
+
+  factory PrecoVenda.fromJson(Map<String, dynamic> json) {
+    return PrecoVenda(
+      valor: (json['valor'] as num).toDouble(),
+      moeda: json['moeda'] as String,
+    );
+  }
 }
 
 class CorretorResumo {
-  final int id;
+  final String id;
   final String nome;
+  final String creci;
+  final String fotoUrl;
+  final String? imovelIdReferencia;
 
-  const CorretorResumo({required this.id, required this.nome});
+  const CorretorResumo({
+    required this.id,
+    required this.nome,
+    required this.creci,
+    required this.fotoUrl,
+    this.imovelIdReferencia,
+  });
+
+  factory CorretorResumo.fromJson(Map<String, dynamic> json) {
+    return CorretorResumo(
+      id: json['id'].toString(),
+      nome: json['nome']?.toString() ?? '',
+      creci: json['creci']?.toString() ?? '',
+      fotoUrl: json['fotoUrl']?.toString() ?? '',
+    );
+  }
+
+  CorretorResumo comImovelReferencia(String imovelId) {
+    return CorretorResumo(
+      id: id,
+      nome: nome,
+      creci: creci,
+      fotoUrl: fotoUrl,
+      imovelIdReferencia: imovelId,
+    );
+  }
 }
 
 class ImovelDetalhe {
@@ -63,8 +135,12 @@ class ImovelDetalhe {
   final SituacaoImovel? situacao;
   final List<FinalidadeImovel> finalidades;
   final LocalizacaoImovel localizacao;
+
+  // Os campos de detalhes variam conforme a natureza do imóvel.
+  // Mantemos o JSON original até a equipe da API confirmar todos os formatos.
   final Map<String, dynamic> detalhes;
-  final double? venda;
+
+  final PrecoVenda? venda;
   final double? aluguelMensal;
   final double? condominioMensal;
   final double? iptuAnual;
@@ -78,80 +154,84 @@ class ImovelDetalhe {
     required this.titulo,
     required this.descricao,
     this.natureza,
-    this.situacao,
     required this.finalidades,
     required this.localizacao,
     required this.detalhes,
-    this.venda,
-    this.aluguelMensal,
-    this.condominioMensal,
-    this.iptuAnual,
+    required this.venda,
+    required this.aluguelMensal,
+    required this.condominioMensal,
+    required this.iptuAnual,
     required this.caracteristicas,
     required this.fotos,
+    this.situacao,
     this.corretor,
   });
 
   factory ImovelDetalhe.fromJson(Map<String, dynamic> json) {
-    final endereco = _map(json['endereco'] ?? json['localizacao']);
-    final casa = _map(json['casa']);
-    final terreno = _map(json['terreno']);
+    final endereco = Map<String, dynamic>.from(
+      (json['endereco'] ?? json['localizacao']) as Map,
+    );
+    final valores = json['valores'] is Map
+        ? Map<String, dynamic>.from(json['valores'] as Map)
+        : json;
+    final vendaJson = valores['venda'] as Map<String, dynamic>?;
     final finalidade = json['finalidade']?.toString();
-    final fotosJson = json['fotos'] as List? ?? const [];
-    final caracteristicasJson = json['caracteristicas'] as Iterable? ?? const [];
-    final corretorId = (json['corretorId'] as num?)?.toInt();
-    final detalhesJson = casa.isNotEmpty
-        ? casa
-        : terreno.isNotEmpty
-            ? terreno
-            : _map(json['detalhes']);
+    final corretorJson = json['corretor'] is Map
+        ? Map<String, dynamic>.from(json['corretor'] as Map)
+        : null;
+    final fotos = (json['fotos'] as List? ?? const []).map((item) {
+      final foto = Map<String, dynamic>.from(item as Map);
+      final url = foto['url']?.toString() ?? '';
+      return FotoImovel(
+        id: (foto['id'] ?? '').toString(),
+        url: url.startsWith('http') ? url : '${ApiClient.baseUrl}$url',
+        ordem: (foto['ordem'] as num?)?.toInt() ?? 0,
+        capa: foto['capa'] == true,
+      );
+    }).toList();
 
     return ImovelDetalhe(
       id: json['id'].toString(),
       empresaId: (json['empresaId'] as num?)?.toInt(),
       titulo: json['titulo']?.toString() ?? '',
       descricao: json['descricao']?.toString() ?? '',
-      natureza: _natureza(json['natureza']),
-      situacao: _situacao(json['situacao']),
-      finalidades: _finalidades(json['finalidades'], finalidade),
-      localizacao: LocalizacaoImovel.fromJson(endereco),
-      detalhes: detalhesJson,
-      venda: _number(json['valorVenda']),
-      aluguelMensal: _number(json['valorAluguel']),
-      condominioMensal: _number(json['valorCondominio']),
-      iptuAnual: _number(json['valorIptu']),
-      caracteristicas: caracteristicasJson
-          .whereType<Map>()
-          .map((item) => CaracteristicaImovel(
-                id: item['id'].toString(),
-                nome: item['nome']?.toString() ?? '',
-              ))
-          .toList(growable: false),
-      fotos: fotosJson.whereType<Map>().map((item) {
-        final url = item['url']?.toString() ?? '';
-        return FotoImovel(
-          id: (item['imagemId'] ?? item['id'] ?? '').toString(),
-          url: ApiClient.resolverUrl(url).toString(),
-          ordem: (item['ordem'] as num?)?.toInt() ?? 0,
-          capa: item['capa'] == true,
-        );
-      }).toList(growable: false),
-      corretor: corretorId == null
-          ? null
-          : CorretorResumo(
-              id: corretorId,
-              nome: json['nomeCorretor']?.toString() ?? '',
+      natureza: json['natureza'] == null ? null : _lerNatureza(json['natureza'] as String),
+      finalidades: (json['finalidades'] as List<dynamic>? ??
+              (finalidade == null ? const [] : [finalidade]))
+          .map((valor) => _lerFinalidade(valor as String))
+          .toList(),
+      localizacao: LocalizacaoImovel.fromJson(
+        endereco,
+      ),
+      situacao: _lerSituacaoImovel(json['situacao']),
+      detalhes: Map<String, dynamic>.from(json['detalhes'] as Map? ?? const {}),
+      venda: vendaJson != null
+          ? PrecoVenda.fromJson(vendaJson)
+          : _lerNumeroOpcional(valores['valorVenda']) == null
+              ? null
+              : PrecoVenda(valor: _lerNumeroOpcional(valores['valorVenda'])!, moeda: 'BRL'),
+      aluguelMensal: _lerNumeroOpcional(valores['aluguelMensal'] ?? valores['valorAluguel']),
+      condominioMensal: _lerNumeroOpcional(valores['condominioMensal'] ?? valores['valorCondominio']),
+      iptuAnual: _lerNumeroOpcional(valores['iptuAnual'] ?? valores['valorIptu']),
+      caracteristicas: (json['caracteristicas'] as List<dynamic>)
+          .map(
+            (item) => CaracteristicaImovel.fromJson(
+              item as Map<String, dynamic>,
             ),
+          )
+          .toList(),
+      fotos: fotos,
+      corretor: corretorJson == null
+          ? (json['corretorId'] == null && json['nomeCorretor'] == null
+              ? null
+              : CorretorResumo(id: json['corretorId'].toString(), nome: json['nomeCorretor']?.toString() ?? '', creci: '', fotoUrl: ''))
+          : CorretorResumo.fromJson(corretorJson),
     );
   }
 }
 
-Map<String, dynamic> _map(dynamic value) =>
-    value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
-
-double? _number(dynamic value) => value is num ? value.toDouble() : null;
-
-NaturezaImovel? _natureza(dynamic value) {
-  switch (value?.toString().toUpperCase()) {
+NaturezaImovel _lerNatureza(String valor) {
+  switch (valor.toUpperCase()) {
     case 'CASA':
       return NaturezaImovel.casa;
     case 'APARTAMENTO':
@@ -161,30 +241,33 @@ NaturezaImovel? _natureza(dynamic value) {
     case 'LOTE':
       return NaturezaImovel.lote;
     default:
-      return null;
+      throw FormatException('Natureza de imóvel desconhecida: $valor');
   }
 }
 
-List<FinalidadeImovel> _finalidades(dynamic values, String? single) {
-  final names = values is List ? values : (single == null ? const [] : [single]);
-  return names.map((value) {
-    switch (value.toString().toUpperCase()) {
-      case 'VENDA':
-        return FinalidadeImovel.venda;
-      case 'ALUGUEL':
-        return FinalidadeImovel.aluguel;
-      case 'VENDA_E_ALUGUEL':
-        return FinalidadeImovel.vendaEAluguel;
-      default:
-        throw FormatException('Finalidade desconhecida: $value');
-    }
-  }).toList(growable: false);
+FinalidadeImovel _lerFinalidade(String valor) {
+  switch (valor.toUpperCase()) {
+    case 'VENDA':
+      return FinalidadeImovel.venda;
+    case 'ALUGUEL':
+      return FinalidadeImovel.aluguel;
+    case 'VENDA_E_ALUGUEL':
+    case 'VENDAEALUGUEL':
+      return FinalidadeImovel.vendaEAluguel;
+    default:
+      throw FormatException('Finalidade desconhecida: $valor');
+  }
 }
 
-SituacaoImovel? _situacao(dynamic value) {
-  if (value == null) return null;
-  for (final item in SituacaoImovel.values) {
-    if (item.name.toUpperCase() == value.toString().toUpperCase()) return item;
+double? _lerNumeroOpcional(dynamic valor) {
+  return valor == null ? null : (valor as num).toDouble();
+}
+
+SituacaoImovel? _lerSituacaoImovel(dynamic valor) {
+  if (valor == null) return null;
+  final nome = valor?.toString().trim().toLowerCase();
+  for (final situacao in SituacaoImovel.values) {
+    if (situacao.name == nome) return situacao;
   }
   return null;
 }
