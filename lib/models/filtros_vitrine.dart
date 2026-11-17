@@ -38,19 +38,19 @@ class FiltrosVitrine {
       areaMaximaM2 == null &&
       caracteristicas.isEmpty;
 
-  Map<String, dynamic> toQueryParameters() => {
-        'finalidade': ?finalidade,
-        'natureza': ?natureza,
-        'precoMinimo': ?precoMinimo,
-        'precoMaximo': ?precoMaximo,
-        'quartosMinimos': ?quartosMinimos,
-        'suitesMinimas': ?suitesMinimas,
-        'vagasMinimas': ?vagasMinimas,
-        if (bairro != null && bairro!.trim().isNotEmpty)
-          'bairro': bairro!.trim(),
-        'areaMinimaM2': ?areaMinimaM2,
-        'areaMaximaM2': ?areaMaximaM2,
-        if (caracteristicas.isNotEmpty)
-          'caracteristicas': caracteristicas,
-      };
+  Map<String, String> toQueryParameters() {
+    final params = <String, String>{};
+    if (finalidade != null) params['finalidade'] = finalidade!;
+    if (natureza != null) params['natureza'] = natureza!;
+    if (precoMinimo != null) params['precoMinimo'] = precoMinimo!.toString();
+    if (precoMaximo != null) params['precoMaximo'] = precoMaximo!.toString();
+    if (quartosMinimos != null) params['quartosMinimos'] = quartosMinimos!.toString();
+    if (suitesMinimas != null) params['suitesMinimas'] = suitesMinimas!.toString();
+    if (vagasMinimas != null) params['vagasMinimas'] = vagasMinimas!.toString();
+    if (bairro != null && bairro!.trim().isNotEmpty) params['bairro'] = bairro!.trim();
+    if (areaMinimaM2 != null) params['areaMinimaM2'] = areaMinimaM2!.toString();
+    if (areaMaximaM2 != null) params['areaMaximaM2'] = areaMaximaM2!.toString();
+    if (caracteristicas.isNotEmpty) params['caracteristicas'] = caracteristicas.join(',');
+    return params;
+  }
 }

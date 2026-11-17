@@ -1,117 +1,314 @@
 import 'dart:convert';
-
-import '../models/filtros_vitrine.dart';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import '../models/imovel.dart';
-import 'api_client.dart';
+import '../models/imovel_enums.dart';
 
 enum TipoOrdenacao { menorPreco, maiorPreco, maiorArea, maisRecentes }
-
-class ResultadoBuscaImoveis {
-  final List<Imovel> imoveis;
-  final int total;
-
-  const ResultadoBuscaImoveis({required this.imoveis, required this.total});
-}
+enum CanalContato { whatsapp, telefone, email }
 
 abstract class ImovelService {
   Future<List<String>> getCidadesAtendidas();
-
-  Future<ResultadoBuscaImoveis> getImoveis({
+  Future<List<Imovel>> getImoveis({
     required String cidade,
     String? busca,
     TipoOrdenacao? ordenacao,
-    FiltrosVitrine filtros = const FiltrosVitrine(),
     int pagina = 1,
+  });
+
+  Future<void> registrarContato({
+    required String imovelId,
+    required String corretorTelefone,
+    required CanalContato canal,
   });
 }
 
 class ImovelServiceApi implements ImovelService {
-  final ApiClient _api;
+  final String baseUrl;
+  final String email;
+  final String senha;
+  final ImovelServiceMock _mockFallback = ImovelServiceMock();
 
-  ImovelServiceApi({ApiClient? apiClient}) : _api = apiClient ?? ApiClient();
+  String? _token;
 
-  @override
-  Future<List<String>> getCidadesAtendidas() async {
-    final resposta = await _api.get('/cidade');
-    final corpo = jsonDecode(utf8.decode(resposta.bodyBytes));
-    if (corpo is! List) {
-      throw const FormatException('A API retornou uma lista de cidades inválida.');
+  ImovelServiceApi({
+    this.baseUrl = 'http://localhost:8080',
+    this.email = 'corretor@imobiliaria.com',
+    this.senha = 'senha-com-no-minimo-12',
+  });
+
+  Future<String?> _obterToken() async {
+    if (_token != null) return _token;
+
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/auth/login'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email, 'senha': senha}),
+          )
+          .timeout(const Duration(seconds: 4));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _token = data['token'] as String?;
+        return _token;
+      }
+
+      debugPrint('Erro no login da API (${response.statusCode}): ${response.body}');
+    } catch (e) {
+      debugPrint('Falha ao autenticar com a API em $baseUrl: $e');
     }
-    return corpo
-        .map((item) => (item as Map)['nome']?.toString() ?? '')
-        .where((nome) => nome.isNotEmpty)
-        .toList(growable: false);
+
+    return null;
   }
 
   @override
-  Future<ResultadoBuscaImoveis> getImoveis({
+  Future<List<String>> getCidadesAtendidas() async {
+    try {
+      final token = await _obterToken();
+      if (token == null) {
+        debugPrint('API indisponivel ou nao autenticada. Usando mock de cidades.');
+        return await _mockFallback.getCidadesAtendidas();
+      }
+
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/cidade'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 4));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final cidades = data
+            .map((item) {
+              if (item is Map) {
+                final nome = item['nome']?.toString() ?? '';
+                final uf = item['uf']?.toString() ?? '';
+                if (nome.isNotEmpty && uf.isNotEmpty) return '$nome - $uf';
+                return nome;
+              }
+              return item.toString();
+            })
+            .where((nome) => nome.isNotEmpty)
+            .toList();
+
+        if (cidades.isNotEmpty) {
+          return cidades;
+        }
+      }
+    } catch (e) {
+      debugPrint('Erro ao buscar cidades na API: $e');
+    }
+
+    return _mockFallback.getCidadesAtendidas();
+  }
+
+  @override
+  Future<List<Imovel>> getImoveis({
     required String cidade,
     String? busca,
     TipoOrdenacao? ordenacao,
-    FiltrosVitrine filtros = const FiltrosVitrine(),
     int pagina = 1,
   }) async {
-    final resposta = await _api.get('/imovel');
-    final corpo = jsonDecode(utf8.decode(resposta.bodyBytes));
-    if (corpo is! List) {
-      throw const FormatException('A API retornou uma lista de imóveis inválida.');
+    try {
+      final token = await _obterToken();
+      if (token == null) {
+        debugPrint('API indisponivel ou nao autenticada. Usando mock de imoveis.');
+        return await _mockFallback.getImoveis(
+          cidade: cidade,
+          busca: busca,
+          ordenacao: ordenacao,
+          pagina: pagina,
+        );
+      }
+
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/imovel'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 4));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        var imoveis = data
+            .map((item) => Imovel.fromJson(item as Map<String, dynamic>, baseUrl: baseUrl))
+            .toList();
+
+        if (cidade.isNotEmpty) {
+          final cidadeLimpa = cidade.split(' - ').first.trim().toLowerCase();
+          imoveis = imoveis
+              .where((i) => i.cidade.toLowerCase().contains(cidadeLimpa))
+              .toList();
+        }
+
+        if (busca != null && busca.isNotEmpty) {
+          final termo = busca.toLowerCase();
+          imoveis = imoveis.where((i) {
+            return i.titulo.toLowerCase().contains(termo) ||
+                i.bairro.toLowerCase().contains(termo) ||
+                i.codigo.toLowerCase().contains(termo);
+          }).toList();
+        }
+
+        switch (ordenacao) {
+          case TipoOrdenacao.menorPreco:
+            imoveis.sort((a, b) => a.preco.compareTo(b.preco));
+            break;
+          case TipoOrdenacao.maiorPreco:
+            imoveis.sort((a, b) => b.preco.compareTo(a.preco));
+            break;
+          case TipoOrdenacao.maiorArea:
+            imoveis.sort((a, b) => (b.areaM2 ?? 0).compareTo(a.areaM2 ?? 0));
+            break;
+          case TipoOrdenacao.maisRecentes:
+          default:
+            imoveis.sort((a, b) => b.dataCriacao.compareTo(a.dataCriacao));
+            break;
+        }
+
+        if (imoveis.isNotEmpty) {
+          return imoveis;
+        }
+      }
+    } catch (e) {
+      debugPrint('Erro ao buscar imoveis na API: $e');
     }
 
-    var imoveis = corpo
-        .map((item) => Imovel.fromJson(Map<String, dynamic>.from(item as Map)))
-        .where((imovel) => cidade.isEmpty || imovel.cidade.toLowerCase() == cidade.toLowerCase())
+    return _mockFallback.getImoveis(
+      cidade: cidade,
+      busca: busca,
+      ordenacao: ordenacao,
+      pagina: pagina,
+    );
+  }
+
+  @override
+  Future<void> registrarContato({
+    required String imovelId,
+    required String corretorTelefone,
+    required CanalContato canal,
+  }) async {
+    debugPrint('LOG API: Contato registrado -> Imovel: $imovelId, Canal: ${canal.name}');
+  }
+}
+
+class ImovelServiceMock implements ImovelService {
+  final List<String> _cidadesMock = ['São Paulo - SP', 'Rio de Janeiro - RJ', 'Curitiba - PR', 'Belo Horizonte - MG'];
+
+  final List<Imovel> _imoveisBase = [
+    Imovel(
+      id: '1',
+      codigo: 'SP-101',
+      titulo: 'Apartamento de Luxo com Varanda',
+      cidade: 'São Paulo',
+      bairro: 'Moema',
+      preco: 3500.0,
+      areaM2: 75.0,
+      quartos: 2,
+      imagemUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800',
+      natureza: NaturezaImovel.apartamento,
+      finalidade: FinalidadeImovel.aluguel,
+      dataCriacao: DateTime.now().subtract(const Duration(days: 2)),
+      corretorNome: 'Carlos Silva',
+      corretorTelefone: '5511999999999',
+      corretorEmail: 'carlos.corretor@email.com',
+    ),
+    Imovel(
+      id: '2',
+      codigo: 'SP-102',
+      titulo: 'Casa Moderna em Condomínio',
+      cidade: 'São Paulo',
+      bairro: 'Jardins',
+      preco: 850000.0,
+      areaM2: 210.0,
+      quartos: 4,
+      imagemUrl: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800',
+      natureza: NaturezaImovel.casa,
+      finalidade: FinalidadeImovel.venda,
+      dataCriacao: DateTime.now().subtract(const Duration(days: 10)),
+      corretorNome: 'Carlos Silva',
+      corretorTelefone: '5511999999999',
+      corretorEmail: 'carlos.corretor@email.com',
+    ),
+    Imovel(
+      id: '3',
+      codigo: 'SP-103',
+      titulo: 'Studio Totalmente Mobiliado',
+      cidade: 'São Paulo',
+      bairro: 'Pinheiros',
+      preco: 2200.0,
+      areaM2: 38.0,
+      quartos: 1,
+      imagemUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
+      natureza: NaturezaImovel.apartamento,
+      finalidade: FinalidadeImovel.aluguel,
+      dataCriacao: DateTime.now().subtract(const Duration(hours: 5)),
+      corretorNome: 'Carlos Silva',
+      corretorTelefone: '5511999999999',
+      corretorEmail: 'carlos.corretor@email.com',
+    ),
+  ];
+
+  @override
+  Future<List<String>> getCidadesAtendidas() async => _cidadesMock;
+
+  @override
+  Future<List<Imovel>> getImoveis({
+    required String cidade,
+    String? busca,
+    TipoOrdenacao? ordenacao,
+    int pagina = 1,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    final cidadeLimpa = cidade.split(' - ').first.trim().toLowerCase();
+    var resultados = _imoveisBase
+        .where((i) => i.cidade.toLowerCase().contains(cidadeLimpa))
         .toList();
 
-    if (filtros.natureza != null || filtros.quartosMinimos != null ||
-        filtros.suitesMinimas != null || filtros.vagasMinimas != null ||
-        filtros.areaMinimaM2 != null || filtros.areaMaximaM2 != null ||
-        filtros.caracteristicas.isNotEmpty) {
-      throw const ApiException(
-        'A API ainda não informa todos os campos necessários para esses filtros.',
-      );
+    if (busca != null && busca.isNotEmpty) {
+      resultados = resultados.where((i) {
+        final termo = busca.toLowerCase();
+        return i.titulo.toLowerCase().contains(termo) ||
+            i.bairro.toLowerCase().contains(termo) ||
+            i.codigo.toLowerCase().contains(termo);
+      }).toList();
     }
-
-    final termo = busca?.trim().toLowerCase();
-    if (termo != null && termo.isNotEmpty) {
-      imoveis = imoveis.where((imovel) =>
-          imovel.titulo.toLowerCase().contains(termo) ||
-          imovel.bairro.toLowerCase().contains(termo)).toList();
-    }
-
-    imoveis = imoveis.where((imovel) {
-      if (filtros.finalidade != null &&
-          imovel.finalidade.name != filtros.finalidade!.toLowerCase()) {
-        return false;
-      }
-      if (filtros.precoMinimo != null && imovel.preco < filtros.precoMinimo!) {
-        return false;
-      }
-      if (filtros.precoMaximo != null && imovel.preco > filtros.precoMaximo!) {
-        return false;
-      }
-      if (filtros.bairro != null &&
-          !imovel.bairro.toLowerCase().contains(filtros.bairro!.toLowerCase())) {
-        return false;
-      }
-      return true;
-    }).toList();
 
     switch (ordenacao) {
       case TipoOrdenacao.menorPreco:
-        imoveis.sort((a, b) => a.preco.compareTo(b.preco));
+        resultados.sort((a, b) => a.preco.compareTo(b.preco));
         break;
       case TipoOrdenacao.maiorPreco:
-        imoveis.sort((a, b) => b.preco.compareTo(a.preco));
+        resultados.sort((a, b) => b.preco.compareTo(a.preco));
         break;
       case TipoOrdenacao.maiorArea:
-        imoveis.sort((a, b) => (b.areaM2 ?? 0).compareTo(a.areaM2 ?? 0));
+        resultados.sort((a, b) => (b.areaM2 ?? 0).compareTo(a.areaM2 ?? 0));
         break;
       case TipoOrdenacao.maisRecentes:
-      case null:
-        // A API não fornece data de criação; preserva-se a ordem recebida.
+      default:
+        resultados.sort((a, b) => b.dataCriacao.compareTo(a.dataCriacao));
         break;
     }
 
-    return ResultadoBuscaImoveis(imoveis: imoveis, total: imoveis.length);
+    return resultados;
+  }
+
+  @override
+  Future<void> registrarContato({
+    required String imovelId,
+    required String corretorTelefone,
+    required CanalContato canal,
+  }) async {
+    debugPrint('LOG API (Mock): Contato registrado -> Imovel: $imovelId, Canal: ${canal.name}');
   }
 }

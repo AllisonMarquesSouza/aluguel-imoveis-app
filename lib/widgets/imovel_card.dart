@@ -12,7 +12,7 @@ class ImovelCard extends StatelessWidget {
     super.key,
     required this.imovel,
     required this.onTap,
-    required this.isFavorito,
+    this.isFavorito = false,
     required this.onAlternarFavorito,
   });
 
@@ -50,20 +50,20 @@ class ImovelCard extends StatelessWidget {
                           child: const Center(child: Icon(Icons.home, size: 50)),
                         )
                       : Image.network(
-                    imovel.imagemUrl,
-                    height: 180,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Container(
-                      height: 180,
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                      child: Icon(
-                        Icons.home,
-                        size: 50,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
+                          imovel.imagemUrl,
+                          height: 180,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => Container(
+                            height: 180,
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            child: Icon(
+                              Icons.home,
+                              size: 50,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
                   Positioned(
                     top: 12,
                     left: 12,
@@ -149,23 +149,23 @@ class ImovelCard extends StatelessWidget {
                         Row(
                           children: [
                             if (imovel.quartos != null) ...[
-                            Icon(
-                              Icons.king_bed_outlined,
-                              size: 18,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                            const SizedBox(width: 4),
-                            Text('${imovel.quartos}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                              Icon(
+                                Icons.king_bed_outlined,
+                                size: 18,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 4),
+                              Text('${imovel.quartos}', style: const TextStyle(fontWeight: FontWeight.w600)),
                             ],
                             if (imovel.areaM2 != null) ...[
-                            const SizedBox(width: 12),
-                            Icon(
-                              Icons.square_foot,
-                              size: 18,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                            const SizedBox(width: 4),
-                            Text('${imovel.areaM2!.toInt()}m²', style: const TextStyle(fontWeight: FontWeight.w600)),
+                              const SizedBox(width: 12),
+                              Icon(
+                                Icons.square_foot,
+                                size: 18,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 4),
+                              Text('${imovel.areaM2?.toInt() ?? 0}m²', style: const TextStyle(fontWeight: FontWeight.w600)),
                             ],
                           ],
                         ),
