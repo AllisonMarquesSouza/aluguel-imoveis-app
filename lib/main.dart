@@ -9,6 +9,7 @@ import 'screens/login_screen.dart';
 import 'screens/acervo_corretor_screen.dart';
 import 'screens/contatos_recebidos_screen.dart';
 import 'screens/gerenciar_fotos_imovel_screen.dart';
+import 'screens/area_gestor_screen.dart';
 import 'services/favoritos_service.dart';
 import 'services/auth_session.dart';
 import 'models/imovel.dart';
@@ -131,6 +132,7 @@ class _AppAluguelState extends State<AppAluguel> {
             imovelCodigo: imovel?.codigo ?? 'IMO-1',
           );
         },
+        '/area-gestor': (context) => const AreaGestorScreen(),
       },
     );
   }
