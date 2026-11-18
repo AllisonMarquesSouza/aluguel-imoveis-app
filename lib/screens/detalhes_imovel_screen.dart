@@ -76,6 +76,17 @@ class DetalhesImovelScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(imovel.titulo),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.add_a_photo_outlined),
+            tooltip: 'Fotos do imóvel',
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                '/gerenciar-fotos',
+                arguments: imovel,
+              );
+            },
+          ),
           if (favoritosService != null)
             ValueListenableBuilder<List<Imovel>>(
               valueListenable: favoritosService!.favoritos,

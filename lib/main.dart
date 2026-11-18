@@ -8,6 +8,7 @@ import 'screens/perfil_corretor_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/acervo_corretor_screen.dart';
 import 'screens/contatos_recebidos_screen.dart';
+import 'screens/gerenciar_fotos_imovel_screen.dart';
 import 'services/favoritos_service.dart';
 import 'services/auth_session.dart';
 import 'models/imovel.dart';
@@ -121,6 +122,15 @@ class _AppAluguelState extends State<AppAluguel> {
         '/login': (context) => const LoginScreen(),
         '/acervo-corretor': (context) => const AcervoCorretorScreen(),
         '/contatos-recebidos': (context) => const ContatosRecebidosScreen(),
+        '/gerenciar-fotos': (context) {
+          final imovel = ModalRoute.of(context)?.settings.arguments as Imovel?;
+          return GerenciarFotosImovelScreen(
+            imovel: imovel,
+            imovelId: imovel?.id ?? '1',
+            imovelTitulo: imovel?.titulo ?? 'Imóvel',
+            imovelCodigo: imovel?.codigo ?? 'IMO-1',
+          );
+        },
       },
     );
   }
