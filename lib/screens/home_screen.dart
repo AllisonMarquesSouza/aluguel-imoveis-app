@@ -99,6 +99,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.inbox),
+            tooltip: 'Contatos recebidos',
+            onPressed: () {
+              Navigator.pushNamed(context, '/contatos-recebidos');
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.favorite),
             onPressed: () {
               Navigator.pushNamed(context, '/favoritos');
