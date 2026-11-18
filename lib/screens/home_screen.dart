@@ -99,6 +99,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.analytics_outlined),
+            tooltip: 'Área do Gestor',
+            onPressed: () {
+              Navigator.pushNamed(context, '/area-gestor');
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.inbox),
             tooltip: 'Contatos recebidos',
             onPressed: () {
