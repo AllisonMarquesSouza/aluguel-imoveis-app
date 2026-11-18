@@ -41,12 +41,14 @@ class _LoginScreenState extends State<LoginScreen> {
       _erro = null;
     });
 
+    final navigator = Navigator.of(context);
+
     try {
       await _authService.entrar(
         email: _emailController.text.trim(),
         senha: _senhaController.text,
       );
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) navigator.pop(true);
     } on ApiException catch (erro) {
       if (mounted) setState(() => _erro = erro.mensagem);
     } catch (_) {
@@ -71,8 +73,9 @@ class _LoginScreenState extends State<LoginScreen> {
           if (AuthSession.instance.autenticado)
             TextButton(
               onPressed: () async {
+                final navigator = Navigator.of(context);
                 await _authService.sair();
-                if (mounted) Navigator.pop(context, true);
+                if (mounted) navigator.pop(true);
               },
               child: const Text('Sair'),
             ),

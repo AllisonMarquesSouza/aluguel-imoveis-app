@@ -1,9 +1,5 @@
-import 'imovel_enums.dart' show SituacaoImovel;
+import 'imovel_enums.dart';
 import '../services/api_client.dart';
-
-enum NaturezaImovel { casa, apartamento, terreno, lote }
-
-enum FinalidadeImovel { venda, aluguel }
 
 class LocalizacaoImovel {
   final String cidade;
@@ -136,8 +132,6 @@ class ImovelDetalhe {
   final List<FinalidadeImovel> finalidades;
   final LocalizacaoImovel localizacao;
 
-  // Os campos de detalhes variam conforme a natureza do imóvel.
-  // Mantemos o JSON original até a equipe da API confirmar todos os formatos.
   final Map<String, dynamic> detalhes;
 
   final PrecoVenda? venda;
@@ -265,7 +259,7 @@ double? _lerNumeroOpcional(dynamic valor) {
 
 SituacaoImovel? _lerSituacaoImovel(dynamic valor) {
   if (valor == null) return null;
-  final nome = valor?.toString().trim().toLowerCase();
+  final nome = valor.toString().trim().toLowerCase();
   for (final situacao in SituacaoImovel.values) {
     if (situacao.name == nome) return situacao;
   }

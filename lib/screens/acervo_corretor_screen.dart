@@ -133,6 +133,11 @@ class _AcervoCorretorScreenState extends State<AcervoCorretorScreen> {
       appBar: AppBar(
         title: const Text('Acervo da imobiliária'),
         actions: [
+          IconButton(
+            onPressed: () => Navigator.pushNamed(context, '/contatos-recebidos'),
+            icon: const Icon(Icons.inbox),
+            tooltip: 'Contatos recebidos',
+          ),
           TextButton.icon(
             onPressed: _sair,
             icon: const Icon(Icons.logout),
@@ -158,7 +163,7 @@ class _AcervoCorretorScreenState extends State<AcervoCorretorScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: DropdownButtonFormField<String>(
-              value: _filtroSituacao,
+              initialValue: _filtroSituacao,
               decoration: const InputDecoration(
                 labelText: 'Filtrar por situação',
                 border: OutlineInputBorder(),

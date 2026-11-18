@@ -6,9 +6,10 @@ import 'screens/detalhes_imovel_screen.dart';
 import 'screens/favoritos_screen.dart';
 import 'screens/perfil_corretor_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/acervo_corretor_screen.dart';
+import 'screens/contatos_recebidos_screen.dart';
 import 'services/favoritos_service.dart';
 import 'services/auth_session.dart';
-import 'screens/acervo_corretor_screen.dart';
 import 'models/imovel.dart';
 
 const String _chaveTemaEscuro = 'tema_escuro';
@@ -119,6 +120,7 @@ class _AppAluguelState extends State<AppAluguel> {
         },
         '/login': (context) => const LoginScreen(),
         '/acervo-corretor': (context) => const AcervoCorretorScreen(),
+        '/contatos-recebidos': (context) => const ContatosRecebidosScreen(),
       },
     );
   }

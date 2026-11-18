@@ -34,8 +34,16 @@ class Imovel {
     required this.cidade,
     required this.bairro,
     required this.preco,
+    this.valorVenda,
+    this.valorAluguel,
+    this.valorCondominio,
+    this.valorIptu,
     this.areaM2,
     this.quartos,
+    this.suites,
+    this.vagas,
+    this.caracteristicas = const [],
+    this.detalhes = const {},
     required this.imagemUrl,
     this.natureza = NaturezaImovel.apartamento,
     this.finalidade = FinalidadeImovel.aluguel,
@@ -53,8 +61,16 @@ class Imovel {
     String? cidade,
     String? bairro,
     double? preco,
+    double? valorVenda,
+    double? valorAluguel,
+    double? valorCondominio,
+    double? valorIptu,
     double? areaM2,
     int? quartos,
+    int? suites,
+    int? vagas,
+    List<String>? caracteristicas,
+    Map<String, dynamic>? detalhes,
     String? imagemUrl,
     NaturezaImovel? natureza,
     FinalidadeImovel? finalidade,
@@ -71,8 +87,16 @@ class Imovel {
       cidade: cidade ?? this.cidade,
       bairro: bairro ?? this.bairro,
       preco: preco ?? this.preco,
+      valorVenda: valorVenda ?? this.valorVenda,
+      valorAluguel: valorAluguel ?? this.valorAluguel,
+      valorCondominio: valorCondominio ?? this.valorCondominio,
+      valorIptu: valorIptu ?? this.valorIptu,
       areaM2: areaM2 ?? this.areaM2,
       quartos: quartos ?? this.quartos,
+      suites: suites ?? this.suites,
+      vagas: vagas ?? this.vagas,
+      caracteristicas: caracteristicas ?? this.caracteristicas,
+      detalhes: detalhes ?? this.detalhes,
       imagemUrl: imagemUrl ?? this.imagemUrl,
       natureza: natureza ?? this.natureza,
       finalidade: finalidade ?? this.finalidade,
@@ -92,8 +116,16 @@ class Imovel {
       'cidade': cidade,
       'bairro': bairro,
       'preco': preco,
+      'valorVenda': valorVenda,
+      'valorAluguel': valorAluguel,
+      'valorCondominio': valorCondominio,
+      'valorIptu': valorIptu,
       'areaM2': areaM2,
       'quartos': quartos,
+      'suites': suites,
+      'vagas': vagas,
+      'caracteristicas': caracteristicas,
+      'detalhes': detalhes,
       'imagemUrl': imagemUrl,
       'natureza': natureza.name,
       'finalidade': finalidade.name,
@@ -128,6 +160,8 @@ class Imovel {
     FinalidadeImovel fin = FinalidadeImovel.aluguel;
     if (finalidadeRaw == 'venda') {
       fin = FinalidadeImovel.venda;
+    } else if (finalidadeRaw == 'venda_e_aluguel' || finalidadeRaw == 'vendaealuguel') {
+      fin = FinalidadeImovel.vendaEAluguel;
     }
 
     final naturezaRaw = json['natureza']?.toString().toLowerCase();
@@ -136,11 +170,10 @@ class Imovel {
     if (naturezaRaw == 'terreno') nat = NaturezaImovel.terreno;
     if (naturezaRaw == 'lote') nat = NaturezaImovel.lote;
 
-    double precoVal = ((json['valorAluguel'] as num?) ??
-            (json['valorVenda'] as num?) ??
-            (json['preco'] as num?) ??
-            0)
-        .toDouble();
+    final double? vVenda = (json['valorVenda'] as num?)?.toDouble();
+    final double? vAluguel = (json['valorAluguel'] as num?)?.toDouble();
+
+    double precoVal = (vAluguel ?? vVenda ?? (json['preco'] as num?) ?? 0).toDouble();
 
     String imgUrl = 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800';
     final fotos = json['fotos'];
@@ -174,6 +207,12 @@ class Imovel {
       }
     }
 
+    final caracs = (json['caracteristicas'] as List?)
+            ?.map((c) => c is Map ? (c['nome']?.toString() ?? '') : c.toString())
+            .where((str) => str.isNotEmpty)
+            .toList() ??
+        const [];
+
     return Imovel(
       id: idStr,
       codigo: codigoStr,
@@ -181,8 +220,16 @@ class Imovel {
       cidade: cidadeNome,
       bairro: bairroNome,
       preco: precoVal,
+      valorVenda: vVenda,
+      valorAluguel: vAluguel,
+      valorCondominio: (json['valorCondominio'] as num?)?.toDouble(),
+      valorIptu: (json['valorIptu'] as num?)?.toDouble(),
       areaM2: (json['areaM2'] as num?)?.toDouble(),
       quartos: (json['quartos'] as num?)?.toInt(),
+      suites: (json['suites'] as num?)?.toInt(),
+      vagas: (json['vagas'] as num?)?.toInt(),
+      caracteristicas: caracs,
+      detalhes: Map<String, dynamic>.from(json['detalhes'] as Map? ?? const {}),
       imagemUrl: imgUrl,
       natureza: nat,
       finalidade: fin,
