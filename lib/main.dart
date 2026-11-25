@@ -10,6 +10,8 @@ import 'screens/acervo_corretor_screen.dart';
 import 'screens/contatos_recebidos_screen.dart';
 import 'screens/gerenciar_fotos_imovel_screen.dart';
 import 'screens/area_gestor_screen.dart';
+import 'screens/login_cliente_screen.dart';
+import 'screens/area_cliente_screen.dart';
 import 'services/favoritos_service.dart';
 import 'services/auth_session.dart';
 import 'models/imovel.dart';
@@ -133,6 +135,8 @@ class _AppAluguelState extends State<AppAluguel> {
           );
         },
         '/area-gestor': (context) => const AreaGestorScreen(),
+        '/login-cliente': (context) => const LoginClienteScreen(),
+        '/area-cliente': (context) => const AreaClienteScreen(),
       },
     );
   }
