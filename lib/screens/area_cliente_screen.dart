@@ -64,25 +64,27 @@ class _AreaClienteScreenState extends State<AreaClienteScreen>
   }
 
   Future<void> _sair() async {
+    final nav = Navigator.of(context);
     await ClienteAuthSession.instance.encerrar();
     if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed('/login-cliente');
+    nav.pushReplacementNamed('/login-cliente');
   }
 
   Future<void> _abrirDocumentoOuComprovante(String url) async {
+    final messenger = ScaffoldMessenger.of(context);
     try {
       final uri = Uri.parse(url);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           const SnackBar(content: Text('Abrindo visualizador de documento...')),
         );
       }
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('Abrindo arquivo de comprovante/documento.')),
       );
     }
@@ -130,7 +132,7 @@ class _AreaClienteScreenState extends State<AreaClienteScreen>
     }
 
     final formatadorData = DateFormat('dd/MM/yyyy');
-    final formatadorMoeda = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
+    final formatadorMoeda = NumberFormat.currency(symbol: 'R\$ ');
 
     return Scaffold(
       appBar: AppBar(
