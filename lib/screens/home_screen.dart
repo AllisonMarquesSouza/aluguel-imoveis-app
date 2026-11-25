@@ -89,9 +89,13 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               const Icon(Icons.location_on, color: Colors.redAccent, size: 22),
               const SizedBox(width: 6),
-              Text(
-                cidadeAtual,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              Flexible(
+                child: Text(
+                  cidadeAtual,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
               ),
               const Icon(Icons.keyboard_arrow_down),
             ],
