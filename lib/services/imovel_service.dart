@@ -25,84 +25,49 @@ abstract class ImovelService {
 
 class ImovelServiceApi implements ImovelService {
   final String baseUrl;
-  final String email;
-  final String senha;
   final ImovelServiceMock _mockFallback = ImovelServiceMock();
 
-  String? _token;
+  final Map<String, int> _cidadesIdsMap = {};
 
   ImovelServiceApi({
     this.baseUrl = 'http://localhost:8080',
-    this.email = 'corretor@imobiliaria.com',
-    this.senha = 'senha-com-no-minimo-12',
   });
-
-  Future<String?> _obterToken() async {
-    if (_token != null) return _token;
-
-    try {
-      final response = await http
-          .post(
-            Uri.parse('$baseUrl/auth/login'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'email': email, 'senha': senha}),
-          )
-          .timeout(const Duration(seconds: 4));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _token = data['token'] as String?;
-        return _token;
-      }
-
-      debugPrint('Erro no login da API (${response.statusCode}): ${response.body}');
-    } catch (e) {
-      debugPrint('Falha ao autenticar com a API em $baseUrl: $e');
-    }
-
-    return null;
-  }
 
   @override
   Future<List<String>> getCidadesAtendidas() async {
     try {
-      final token = await _obterToken();
-      if (token == null) {
-        debugPrint('API indisponivel ou nao autenticada. Usando mock de cidades.');
-        return await _mockFallback.getCidadesAtendidas();
-      }
-
       final response = await http
           .get(
-            Uri.parse('$baseUrl/cidade'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
+            Uri.parse('$baseUrl/vitrine/cidades'),
+            headers: const {'Accept': 'application/json'},
           )
           .timeout(const Duration(seconds: 4));
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        final cidades = data
-            .map((item) {
-              if (item is Map) {
-                final nome = item['nome']?.toString() ?? '';
-                final uf = item['uf']?.toString() ?? '';
-                if (nome.isNotEmpty && uf.isNotEmpty) return '$nome - $uf';
-                return nome;
-              }
-              return item.toString();
-            })
-            .where((nome) => nome.isNotEmpty)
-            .toList();
+        final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+        final cidades = <String>[];
+        _cidadesIdsMap.clear();
+
+        for (final item in data) {
+          if (item is Map) {
+            final id = (item['id'] as num?)?.toInt();
+            final nome = item['nome']?.toString() ?? '';
+            final uf = item['uf']?.toString() ?? '';
+            if (nome.isNotEmpty && id != null) {
+              final nomeComUf = uf.isNotEmpty ? '$nome - $uf' : nome;
+              cidades.add(nomeComUf);
+              _cidadesIdsMap[nome.toLowerCase()] = id;
+              _cidadesIdsMap[nomeComUf.toLowerCase()] = id;
+            }
+          }
+        }
 
         if (cidades.isNotEmpty) {
           return cidades;
         }
       }
     } catch (e) {
-      debugPrint('Erro ao buscar cidades na API: $e');
+      debugPrint('Erro ao buscar cidades na rota publica /vitrine/cidades: $e');
     }
 
     return _mockFallback.getCidadesAtendidas();
@@ -116,39 +81,38 @@ class ImovelServiceApi implements ImovelService {
     int pagina = 1,
   }) async {
     try {
-      final token = await _obterToken();
-      if (token == null) {
-        debugPrint('API indisponivel ou nao autenticada. Usando mock de imoveis.');
-        return await _mockFallback.getImoveis(
-          cidade: cidade,
-          busca: busca,
-          ordenacao: ordenacao,
-          pagina: pagina,
-        );
+      if (_cidadesIdsMap.isEmpty) {
+        await getCidadesAtendidas();
       }
 
+      final cidadeLimpa = cidade.split(' - ').first.trim().toLowerCase();
+      final cidadeId = _cidadesIdsMap[cidade.toLowerCase()] ??
+          _cidadesIdsMap[cidadeLimpa] ??
+          (_cidadesIdsMap.isNotEmpty ? _cidadesIdsMap.values.first : 1);
+
+      final queryParams = <String, String>{
+        'cidadeId': cidadeId.toString(),
+      };
+
+      if (busca != null && busca.isNotEmpty) {
+        queryParams['texto'] = busca;
+      }
+
+      final uri = Uri.parse('$baseUrl/vitrine/imoveis').replace(queryParameters: queryParams);
+
       final response = await http
-          .get(
-            Uri.parse('$baseUrl/imovel'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-          )
+          .get(uri, headers: const {'Accept': 'application/json'})
           .timeout(const Duration(seconds: 4));
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        var imoveis = data
+        final dynamic json = jsonDecode(utf8.decode(response.bodyBytes));
+        final List<dynamic> content = json is Map && json['content'] is List
+            ? json['content'] as List
+            : (json is List ? json : []);
+
+        var imoveis = content
             .map((item) => Imovel.fromJson(item as Map<String, dynamic>, baseUrl: baseUrl))
             .toList();
-
-        if (cidade.isNotEmpty) {
-          final cidadeLimpa = cidade.split(' - ').first.trim().toLowerCase();
-          imoveis = imoveis
-              .where((i) => i.cidade.toLowerCase().contains(cidadeLimpa))
-              .toList();
-        }
 
         if (busca != null && busca.isNotEmpty) {
           final termo = busca.toLowerCase();
@@ -175,12 +139,11 @@ class ImovelServiceApi implements ImovelService {
             break;
         }
 
-        if (imoveis.isNotEmpty) {
-          return imoveis;
-        }
+        // Retorna o resultado real obtido da API
+        return imoveis;
       }
     } catch (e) {
-      debugPrint('Erro ao buscar imoveis na API: $e');
+      debugPrint('Erro ao buscar imoveis na rota publica /vitrine/imoveis: $e');
     }
 
     return _mockFallback.getImoveis(
@@ -197,7 +160,24 @@ class ImovelServiceApi implements ImovelService {
     required String corretorTelefone,
     required CanalContato canal,
   }) async {
-    debugPrint('LOG API: Contato registrado -> Imovel: $imovelId, Canal: ${canal.name}');
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/vitrine/imoveis/$imovelId/contatos'),
+            headers: const {'Content-Type': 'application/json', 'Accept': 'application/json'},
+            body: jsonEncode({'canal': canal.name.toUpperCase()}),
+          )
+          .timeout(const Duration(seconds: 4));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        debugPrint('Contato registrado com sucesso na rota publica da vitrine.');
+        return;
+      }
+    } catch (e) {
+      debugPrint('Erro ao registrar contato na vitrine publica: $e');
+    }
+
+    debugPrint('LOG API (Fallback): Contato registrado -> Imovel: $imovelId, Canal: ${canal.name}');
   }
 }
 

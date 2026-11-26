@@ -14,6 +14,7 @@ class ApiException implements Exception {
   @override
   String toString() => mensagem;
 }
+
 class ApiNotFoundException extends ApiException {
   const ApiNotFoundException(super.mensagem);
 }
@@ -51,17 +52,19 @@ class ApiClient {
       final token = AuthSession.instance.token;
       final headers = <String, String>{'Accept': 'application/json'};
       if (token != null) headers['Authorization'] = 'Bearer $token';
+
       final response = await _http
           .get(uri(path, query), headers: headers)
           .timeout(const Duration(seconds: 15));
+
       if (response.statusCode == 401 || response.statusCode == 403) {
-        if (response.statusCode == 401) {
+        if (response.statusCode == 401 && token != null) {
           unawaited(AuthSession.instance.encerrar());
         }
         throw ApiAuthenticationException(
           token == null
-              ? 'Entre com uma conta de corretor ativa para consultar cidades e imóveis da sua empresa.'
-              : 'A API recusou este acesso. Verifique se a conta é de um corretor ativo e tente entrar novamente.',
+              ? 'O recurso exigiu autenticação na API.'
+              : 'A API recusou este acesso. Verifique se a conta é ativa e tente entrar novamente.',
         );
       }
       if (response.statusCode == 404) {
@@ -96,10 +99,7 @@ class ApiClient {
       final corpo = response.bodyBytes.isEmpty
           ? null
           : jsonDecode(utf8.decode(response.bodyBytes));
-      if (response.statusCode == 401) {
-        throw const ApiException('Não foi possível entrar. Confira seus dados e tente novamente.');
-      }
-      if (response.statusCode == 403) {
+      if (response.statusCode == 401 || response.statusCode == 403) {
         throw const ApiException('Não foi possível entrar. Confira seus dados e tente novamente.');
       }
       if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -137,17 +137,17 @@ class ApiClient {
           .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 401 || response.statusCode == 403) {
-        if (response.statusCode == 401) {
+        if (response.statusCode == 401 && token != null) {
           unawaited(AuthSession.instance.encerrar());
         }
-        throw const ApiException('A API recusou o registro do contato.');
+        throw const ApiException('A API recusou a requisição.');
       }
       if (response.statusCode == 404) {
-        throw const ApiException('O imóvel ou corretor não foi encontrado.');
+        throw const ApiException('O recurso solicitado não foi encontrado.');
       }
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw ApiException(
-          'Não foi possível registrar o contato (HTTP ${response.statusCode}).',
+          'Erro ao processar requisição na API (HTTP ${response.statusCode}).',
         );
       }
       return response;
@@ -155,9 +155,8 @@ class ApiClient {
       rethrow;
     } catch (_) {
       throw const ApiException(
-        'Não foi possível conectar à API para registrar o contato.',
+        'Não foi possível conectar à API.',
       );
     }
   }
-
 }
